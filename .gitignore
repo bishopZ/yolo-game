@@ -1,0 +1,25 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Model weights (large binary files — download separately)
+models/
+*.npz
+*.pt
+*.weights
+
+# Node
+node_modules/
+
+# Electron build output
+dist/
+out/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+*.swp

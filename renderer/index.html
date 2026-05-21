@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Yolo Game</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- Reconnecting banner -->
+  <div id="reconnect-banner">⚠ Inference reconnecting…</div>
+
+  <!-- ── Home screen ──────────────────────────────────────────────── -->
+  <section id="screen-home" class="screen active" role="main">
+    <div class="home-logo">🎯</div>
+    <h1 class="home-title">YOLO GAME</h1>
+    <p class="home-sub">Find objects in the real world before time runs out.</p>
+    <button id="btn-play" class="btn btn-primary">Play Now</button>
+    <p class="home-tagline">Powered by YOLO26 MLX · On-device</p>
+    <p id="warming-note" class="warming-note">Loading inference model…</p>
+  </section>
+
+  <!-- ── Tips screen ─────────────────────────────────────────────── -->
+  <section id="screen-tips" class="screen" role="main">
+    <h2 class="tips-title">How to Play</h2>
+    <ul class="tips-list">
+      <li>
+        <span class="tips-icon">🔍</span>
+        <span>Find the object shown using your camera — scan the room!</span>
+      </li>
+      <li>
+        <span class="tips-icon">⏱</span>
+        <span>Faster finds earn more points. Let time run out and you lose points.</span>
+      </li>
+      <li>
+        <span class="tips-icon">🏳</span>
+        <span>Tap <strong>Give Up</strong> to cut your losses and earn a small consolation score.</span>
+      </li>
+      <li>
+        <span class="tips-icon">🏠</span>
+        <span>Get off the couch — walk around, check every room.</span>
+      </li>
+    </ul>
+    <button id="btn-begin" class="btn btn-primary">Begin</button>
+  </section>
+
+  <!-- ── Countdown screen ────────────────────────────────────────── -->
+  <section id="screen-countdown" class="screen" aria-live="polite">
+    <div id="countdown-num" class="countdown-number">3</div>
+  </section>
+
+  <!-- ── Prompt screen ───────────────────────────────────────────── -->
+  <section id="screen-prompt" class="screen" aria-live="assertive">
+    <span id="prompt-round-label" class="label prompt-round-label">Round 1 of 5</span>
+    <p class="prompt-find">Find a…</p>
+    <h2 id="prompt-target" class="prompt-target">—</h2>
+    <p id="prompt-hint" class="prompt-hint"></p>
+    <p class="prompt-go">Go! →</p>
+  </section>
+
+  <!-- ── Play screen ─────────────────────────────────────────────── -->
+  <section id="screen-play" class="screen">
+    <div class="play-camera-wrap">
+      <video id="play-video" autoplay playsinline muted></video>
+      <canvas id="play-canvas"></canvas>
+      <div id="play-found-overlay" class="play-overlay-found">✓</div>
+      <div class="play-hud">
+        <span id="play-prompt-label" class="play-prompt-label">—</span>
+        <span id="play-timer" class="play-timer mono">0:60</span>
+      </div>
+      <div class="play-score-hud">
+        <div id="play-score-value" class="play-score-value">100</div>
+        <div class="play-score-label">pts available</div>
+      </div>
+    </div>
+    <div class="play-controls">
+      <span id="play-round-label" class="play-round-label">Round 1 of 5</span>
+      <button id="btn-give-up" class="btn btn-give-up">Give Up</button>
+    </div>
+  </section>
+
+  <!-- ── Round summary screen ────────────────────────────────────── -->
+  <section id="screen-round-summary" class="screen">
+    <div id="summary-icon" class="summary-outcome-icon">✓</div>
+    <div id="summary-outcome" class="summary-outcome-label found">Found it!</div>
+    <div id="summary-points" class="summary-points positive">+87</div>
+    <div class="summary-pts-label">points this round</div>
+    <div class="summary-total-card">
+      <div id="summary-running-total" class="summary-total-num">87</div>
+      <div class="summary-total-label">running total</div>
+    </div>
+    <button id="btn-next-round" class="btn btn-primary">Next Round →</button>
+  </section>
+
+  <!-- ── Final summary screen ────────────────────────────────────── -->
+  <section id="screen-final-summary" class="screen">
+    <div class="final-trophy">🏆</div>
+    <div id="final-total" class="final-total">0</div>
+    <div class="final-total-label">final score</div>
+    <div id="final-rounds" class="final-rounds"></div>
+    <div class="final-share-row">
+      <button id="btn-share-x" class="btn-share" title="Share on X">𝕏 Share</button>
+      <button id="btn-share-copy" class="btn-share" title="Copy score">📋 Copy</button>
+    </div>
+    <button id="btn-play-again" class="btn btn-primary">Play Again</button>
+  </section>
+
+</div><!-- #app -->
+<script type="module" src="app.js"></script>
+</body>
+</html>

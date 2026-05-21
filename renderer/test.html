@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Yolo Game — IPC Test</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #eee; padding: 16px; margin: 0; }
+    h2 { color: #f33; }
+    #status { color: #ff0; margin-bottom: 8px; }
+    #log { font-size: 12px; max-height: 300px; overflow-y: auto;
+           background: #000; padding: 8px; border: 1px solid #333; }
+    video { display: block; width: 320px; height: 240px;
+            background: #000; border: 1px solid #555; margin-bottom: 8px; }
+    canvas { display: none; }
+    button { background: #c00; color: #fff; border: none; padding: 8px 16px;
+             cursor: pointer; font-size: 14px; margin-right: 8px; }
+  </style>
+</head>
+<body>
+  <h2>Yolo Game — IPC Test Page</h2>
+  <div id="status">Waiting for inference subprocess…</div>
+  <video id="cam" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
+  <div>
+    <button id="btnStart">Start Camera</button>
+    <button id="btnStop" disabled>Stop</button>
+  </div>
+  <pre id="log">— log —</pre>
+
+<script type="module">
+  const status = document.getElementById('status');
+  const log    = document.getElementById('log');
+  const video  = document.getElementById('cam');
+  const canvas = document.getElementById('canvas');
+  const ctx    = canvas.getContext('2d');
+  const btnStart = document.getElementById('btnStart');
+  const btnStop  = document.getElementById('btnStop');
+
+  let running = false;
+  let frameInterval = null;
+
+  function logLine(msg) {
+    const ts = new Date().toISOString().slice(11, 23);
+    log.textContent = `[${ts}] ${msg}\n` + log.textContent.slice(0, 4000);
+  }
+
+  // IPC events
+  window.yoloIPC.onInferenceReady(() => {
+    status.textContent = '✅ Inference subprocess ready';
+    status.style.color = '#0f0';
+    logLine('Inference subprocess ready');
+  });
+
+  window.yoloIPC.onSubprocessCrash((code) => {
+    status.textContent = `⚠️ Subprocess crashed (code ${code}) — reconnecting…`;
+    status.style.color = '#f80';
+    logLine(`Subprocess crash: code=${code}`);
+  });
+
+  // Camera
+  btnStart.addEventListener('click', async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      video.srcObject = stream;
+      await video.play();
+      running = true;
+      btnStart.disabled = true;
+      btnStop.disabled = false;
+      logLine('Camera started');
+      startInference();
+    } catch (err) {
+      logLine(`Camera error: ${err.message}`);
+    }
+  });
+
+  btnStop.addEventListener('click', () => {
+    running = false;
+    clearInterval(frameInterval);
+    const stream = video.srcObject;
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    video.srcObject = null;
+    btnStart.disabled = false;
+    btnStop.disabled = true;
+    logLine('Stopped');
+  });
+
+  function startInference() {
+    frameInterval = setInterval(async () => {
+      if (!running || video.readyState < 2) return;
+
+      // Resize to 640×480 (ADR-YG-02)
+      const W = 640, H = 480, C = 4;
+      canvas.width = W;
+      canvas.height = H;
+      ctx.drawImage(video, 0, 0, W, H);
+      const imageData = ctx.getImageData(0, 0, W, H);
+
+      // Build header + payload
+      const header = new ArrayBuffer(12);
+      const hView  = new DataView(header);
+      hView.setUint32(0, W, true);
+      hView.setUint32(4, H, true);
+      hView.setUint32(8, C, true);
+
+      const combined = new Uint8Array(12 + imageData.data.byteLength);
+      combined.set(new Uint8Array(header), 0);
+      combined.set(new Uint8Array(imageData.data.buffer), 12);
+
+      const t0 = performance.now();
+      try {
+        const result = await window.yoloIPC.detectFrame(combined.buffer);
+        const ms = (performance.now() - t0).toFixed(1);
+        if (result.warming) {
+          logLine(`Warming… (${ms}ms)`);
+        } else {
+          logLine(`${ms}ms | found=${result.found} | labels=[${result.labels.join(',')}]`);
+        }
+      } catch (err) {
+        logLine(`IPC error: ${err.message || JSON.stringify(err)}`);
+      }
+    }, 200); // ~5fps
+  }
+</script>
+</body>
+</html>
