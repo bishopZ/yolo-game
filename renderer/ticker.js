@@ -41,6 +41,8 @@ export const createTicker = ({
   let running = false;
   /** @type {Set<string>} */
   let excludeLower = new Set();
+  /** @type {Set<string>} */
+  let targetLower = new Set();
 
   const containerWidth = () => (container ? container.clientWidth : 0);
 
@@ -51,7 +53,10 @@ export const createTicker = ({
 
   const appendWord = (text) => {
     const span = document.createElement('span');
-    span.className = 'play-ticker-word';
+    const key = text.toLowerCase();
+    span.className = targetLower.has(key)
+      ? 'play-ticker-word play-ticker-word--target'
+      : 'play-ticker-word';
     span.textContent = text;
     trackEl.appendChild(span);
     return span;
@@ -132,6 +137,10 @@ export const createTicker = ({
       excludeLower = new Set((labels || []).map((l) => l.toLowerCase()));
     },
 
+    setTargetLabels(labels) {
+      targetLower = new Set((labels || []).map((l) => l.toLowerCase()));
+    },
+
     addDetections(labels) {
       let wasEmpty = map.length === 0;
       for (const raw of labels || []) {
@@ -159,6 +168,7 @@ export const createTicker = ({
       scrollPx = 0;
       nextSpawnAt = 0;
       lastTs = 0;
+      targetLower = new Set();
       trackEl.replaceChildren();
       trackEl.style.transform = '';
     },

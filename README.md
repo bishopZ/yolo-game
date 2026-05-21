@@ -10,7 +10,7 @@ Most games keep you seated, staring at a screen. Yolo Game does the opposite: it
 
 A local-first scavenger hunt game powered by [YOLO26 MLX](https://github.com/thewebAI/yolo-mlx) on-device object detection.
 
-- **5 rounds per session.** Each round shows you a target (e.g. "Find a cup or mug"), starts a 2-minute timer, and activates your camera.
+- **5 rounds per session** — rounds 1–3 use **easy** household prompts; rounds 4–5 ramp to **hard**. Each round starts a 2-minute timer and activates your camera.
 - **Find it fast** — score decays linearly from 100 to 0 over 2 minutes. Finding the object scores 2× the current HUD value.
 - **Tap Give Up** to collect a share of remaining score — the share grows as time passes, so there's a sweet spot around the halfway mark.
 - **Run out the clock** and you score 0 for that round.
@@ -30,7 +30,9 @@ Built for the **[WebAI YOLO26 MLX Build Challenge](https://community.webai.com/t
 
 ---
 
-## Setup
+## Setup (from source — developers)
+
+Use this path if you are hacking on the game or running `npm start` without a release DMG. The **signed DMG** does not need these steps.
 
 ### 1. Clone the repo
 
@@ -52,15 +54,15 @@ npm install
 ### 3. Set up the Python inference environment
 
 ```bash
-# Create a virtual environment at the repo root
-python3 -m venv .venv
+# Python 3.10–3.12 recommended (MLX / yolo-mlx)
+python3.12 -m venv .venv
 source .venv/bin/activate
 
-# Install Python dependencies
+# Install yolo-mlx from GitHub (or pip install -e /path/to/yolo-mlx clone)
 pip install -r inference/requirements.txt
 ```
 
-> **Note:** `yolo26mlx` requires Apple Silicon. The `requirements.txt` pins the minimal set: `yolo26mlx` and `numpy`.
+> **Note:** Requires Apple Silicon. `requirements.txt` installs [yolo-mlx](https://github.com/thewebAI/yolo-mlx) from GitHub. Override the interpreter with `YOLO_PYTHON` when launching the app.
 
 ### 4. Download and convert the yolo26n weights
 
@@ -102,17 +104,45 @@ The app launches an Electron window. The model loads and warms up in the backgro
 
 ---
 
+## Download the Mac app (standalone — no terminal)
+
+Pre-built **Apple Silicon** releases include the game, **yolo26n** weights, and an embedded Python/MLX runtime. No Homebrew, venv, or manual model download required.
+
+**[Latest release (DMG)](https://github.com/bishopZ/yolo-game/releases/latest)**
+
+1. Open the DMG and drag **Yolo Game** to Applications.
+2. Launch the app; allow **camera** access when macOS prompts.
+3. Wait for “Loading inference model…” to finish (~5–10s first launch), then tap **Play Now**.
+
+**Requirements:** Apple Silicon Mac (M1–M4), macOS 13+.
+
+**Optional overrides** (for debugging only): `YOLO_PYTHON`, `YOLO_MODEL`, `YOLO_CONF` — see [macOS code signing guide](docs/macos-code-signing.md).
+
+### Build a standalone DMG yourself
+
+From `repo/` on an Apple Silicon Mac with Python 3.10–3.12:
+
+```bash
+npm install
+npm run dist    # runs prepare:bundle, then electron-builder (signed if APPLE_* env set)
+npm run pack    # unsigned .app in dist/mac-arm64/ for smoke tests
+```
+
+`scripts/prepare_bundle.sh` creates `bundle/python` (embedded venv) and `bundle/models/yolo26n.npz` before packaging. See **[docs/macos-code-signing.md](docs/macos-code-signing.md)** for signing and notarization.
+
+---
+
 ## How it works
 
 ```
 Renderer (Electron web view)
   └─ Canvas grabs 640×480 RGBA frame from <video>
   └─ ArrayBuffer → contextBridge → Electron main process
-        └─ Raw bytes → Python subprocess stdin (ADR-YG-01)
+        └─ Raw bytes → Python subprocess stdin 
               └─ numpy.frombuffer → RGB → yolo26n.predict()
               └─ JSON detection line → stdout
         └─ Result relayed back to renderer
-  └─ Bounding boxes drawn on overlay canvas (AC-08)
+  └─ Bounding boxes drawn on overlay canvas 
   └─ If detected label matches target prompt → round scored
 ```
 
@@ -124,16 +154,45 @@ Inference runs at ~5fps. Camera preview runs at native frame rate. Only the dete
 
 ## Extending with custom puzzles
 
-The puzzle map (`renderer/puzzle_map.json`) is a plain JSON array:
+### Path A — COCO classes only (stay in this repo)
 
-```json
-[
-  { "prompt": "Find a cup or mug", "classes": ["cup"], "hint": "Coffee mug, tea cup, any drinking cup" },
-  ...
-]
-```
+Edit [`renderer/puzzle_map.json`](renderer/puzzle_map.json). Each entry:
 
-Each entry maps a player-facing prompt to one or more COCO class names. Add your own entries to teach the game new targets. For custom classes beyond COCO 80, see the WebAI [Infernace documentation](https://community.webai.com) for training new detection heads.
+| Field | Purpose |
+|-------|---------|
+| `prompt` | Shown to the player (e.g. `"Find a cup or mug"`) |
+| `classes` | One or more [COCO-80](https://github.com/thewebAI/yolo-mlx) class names the detector must see |
+| `hint` | Optional tip on the prompt screen |
+| `difficulty` | `"easy"` or `"hard"` — sessions use 3 easy prompts then 2 hard |
+
+Reload the game (`npm start` or restart the app). No rebuild required.
+
+### Path B — Custom classes beyond COCO-80
+
+You leave the JSON-only path and train or fine-tune a model that emits **new** class labels, then point the Python subprocess at those weights.
+
+**Prerequisites**
+
+- Apple Silicon Mac, macOS 13+
+- Python 3.10+ venv with `yolo26mlx` (same as Setup §3)
+- Local clone of [yolo-mlx](https://github.com/thewebAI/yolo-mlx) and weights tooling
+- Labeled images for your new classes (or a workflow that produces them)
+- Comfort with WebAI’s **Infernace** / fine-tune flow (not shipped inside this game)
+
+**Process (headline steps)**
+
+1. **Train or obtain weights** — Use upstream YOLO26 MLX + Infernace docs to add detection heads for your classes and export a compatible `.npz` / `.pt`.
+2. **Install weights** — Place the file under `models/` (or set `YOLO_MODEL` when launching).
+3. **Wire inference** — Ensure `inference/server.py` loads your variant; adjust env vars documented in Setup if needed.
+4. **Map prompts** — Add `puzzle_map.json` entries whose `classes` strings **exactly match** the labels your model returns.
+5. **Play-test** — Run at home; tune `YOLO_CONF` if finds are too strict or loose.
+
+Full training commands, dataset formats, and Infernace UI steps live in upstream docs — do not duplicate them here:
+
+- [YOLO26 MLX (yolo-mlx)](https://github.com/thewebAI/yolo-mlx)
+- [WebAI community — YOLO26 MLX challenge & Infernace](https://community.webai.com)
+
+If you modify `inference/server.py` or bundle custom weights, AGPL-3.0 applies to what you distribute — see [LICENSE](LICENSE).
 
 ---
 
@@ -175,3 +234,4 @@ yolo-game/
 
 - [YOLO26 MLX](https://github.com/thewebAI/yolo-mlx) — upstream inference library by WebAI
 - Built by [Bishop Zareh](https://bishopz.com) for the WebAI YOLO26 MLX Build Challenge, May 2026
+

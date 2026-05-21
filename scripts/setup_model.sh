@@ -12,6 +12,7 @@ YOLO_MLX_ROOT="${YOLO_MLX_ROOT:-}"
 
 if [[ -z "${YOLO_MLX_ROOT}" ]]; then
   for candidate in \
+    "${REPO_ROOT}/../../ComfyUI YOLO MLX node/repo" \
     "${REPO_ROOT}/../yolo-mlx" \
     "${REPO_ROOT}/../../yolo-mlx" \
     "${HOME}/git/yolo-mlx" \

@@ -1,0 +1,62 @@
+name: Release macOS
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Embedded MLX runtime (bundle/python + bundle/models) — Python 3.10–3.12 only
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build signed release
+        if: ${{ secrets.APPLE_ID != '' && secrets.APPLE_APP_SPECIFIC_PASSWORD != '' && secrets.APPLE_TEAM_ID != '' }}
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: npm run dist
+
+      - name: Build unsigned pack (no Apple secrets)
+        if: ${{ secrets.APPLE_ID == '' || secrets.APPLE_APP_SPECIFIC_PASSWORD == '' || secrets.APPLE_TEAM_ID == '' }}
+        run: npm run pack
+
+      - name: Upload release assets (signed)
+        if: startsWith(github.ref, 'refs/tags/') && secrets.APPLE_ID != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.dmg
+            dist/*.zip
+          generate_release_notes: true
+
+      - name: Upload unsigned artifact
+        if: secrets.APPLE_ID == '' || secrets.APPLE_APP_SPECIFIC_PASSWORD == '' || secrets.APPLE_TEAM_ID == ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: yolo-game-mac-unsigned
+          path: dist/mac-arm64/

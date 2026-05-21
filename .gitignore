@@ -13,6 +13,9 @@ models/
 # Node
 node_modules/
 
+# Standalone release bundle (python venv + weights) — built by scripts/prepare_bundle.sh
+bundle/
+
 # Electron build output
 dist/
 out/

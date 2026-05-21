@@ -55,6 +55,7 @@
   <!-- ── Prompt screen ───────────────────────────────────────────── -->
   <section id="screen-prompt" class="screen" aria-live="assertive">
     <span id="prompt-round-label" class="label prompt-round-label">Round 1 of 5</span>
+    <span id="prompt-difficulty" class="prompt-difficulty" hidden></span>
     <p class="prompt-find">Find a…</p>
     <h2 id="prompt-target" class="prompt-target">—</h2>
     <p id="prompt-hint" class="prompt-hint"></p>
@@ -105,8 +106,10 @@
     <div class="final-total-label">final score</div>
     <div id="final-rounds" class="final-rounds"></div>
     <div class="final-share-row">
-      <button id="btn-share-x" class="btn-share" title="Share on X">𝕏 Share</button>
-      <button id="btn-share-copy" class="btn-share" title="Copy score">📋 Copy</button>
+      <button id="btn-share-facebook" class="btn-share" title="Share on Facebook">Facebook</button>
+      <button id="btn-share-bluesky" class="btn-share" title="Share on Bluesky">Bluesky</button>
+      <button id="btn-share-download" class="btn-share" title="Download score image">Save image</button>
+      <button id="btn-share-copy" class="btn-share" title="Copy score text">Copy text</button>
     </div>
     <button id="btn-play-again" class="btn btn-primary">Return to Home</button>
   </section>

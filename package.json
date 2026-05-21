@@ -3,8 +3,14 @@
   "version": "1.0.0",
   "description": "A scavenger hunt game powered by local-first YOLO26 MLX detection — getting people back into the physical world.",
   "main": "main.cjs",
+  "author": "Bishop Zareh",
   "scripts": {
     "start": "env -u ELECTRON_RUN_AS_NODE electron .",
+    "prepare:bundle": "bash scripts/prepare_bundle.sh",
+    "prepack": "npm run prepare:bundle",
+    "predist": "npm run prepare:bundle",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
     "test:scoring": "node --experimental-vm-modules renderer/tests/scoring.test.js",
     "test:state": "node --experimental-vm-modules renderer/tests/state.test.js",
     "test": "npm run test:scoring && npm run test:state"
@@ -13,6 +19,63 @@
   "license": "AGPL-3.0",
   "dependencies": {},
   "devDependencies": {
-    "electron": "^42.2.0"
+    "electron": "^42.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.bishopz.yologame",
+    "productName": "Yolo Game",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "renderer/**/*",
+      "build/**/*",
+      "docs/**/*",
+      "inference/**/*",
+      "scripts/setup_model.sh",
+      "scripts/prepare_bundle.sh",
+      "!**/*.test.js",
+      "!renderer/test.html"
+    ],
+    "extraResources": [
+      {
+        "from": "inference",
+        "to": "inference",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "bundle/python",
+        "to": "python",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "bundle/models",
+        "to": "models",
+        "filter": ["**/*"]
+      }
+    ],
+    "asarUnpack": [
+      "inference/**"
+    ],
+    "mac": {
+      "category": "public.app-category.games",
+      "target": [
+        { "target": "dmg", "arch": ["arm64"] },
+        { "target": "zip", "arch": ["arm64"] }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSCameraUsageDescription": "Yolo Game needs the camera to detect objects while you play."
+      }
+    },
+    "dmg": {
+      "title": "Yolo Game"
+    }
   }
 }

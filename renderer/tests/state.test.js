@@ -12,7 +12,7 @@
 
 'use strict';
 
-import { createGame, STATES, ROUND_COUNT } from '../game.js';
+import { createGame, STATES, ROUND_COUNT, buildSessionRoundOrder } from '../game.js';
 
 let passed = 0;
 let failed = 0;
@@ -37,11 +37,12 @@ function assertEqual(actual, expected, message) {
   }
 }
 
-// Minimal puzzle map with enough entries for tests
+// Minimal puzzle map with enough entries for tests (3 easy + 2 hard minimum)
 const TEST_PUZZLE_MAP = Array.from({ length: ROUND_COUNT + 2 }, (_, i) => ({
   prompt: `Find item ${i + 1}`,
   classes: ['bottle'],
   hint: `Hint ${i + 1}`,
+  difficulty: i < 4 ? 'easy' : 'hard',
 }));
 
 // Fake timers: replace setTimeout/setInterval/clearInterval for sync testing
@@ -241,6 +242,31 @@ for (const s of EXPECTED_STATES) {
     Object.values(STATES).includes(s),
     `STATES includes '${s}'`
   );
+}
+
+// ── Suite: difficulty round order ─────────────────────────────────────────
+
+console.log('\n── buildSessionRoundOrder (3 easy, 2 hard) ─────');
+
+{
+  const tiered = [
+    { prompt: 'e1', classes: ['bottle'], hint: '', difficulty: 'easy' },
+    { prompt: 'e2', classes: ['cup'], hint: '', difficulty: 'easy' },
+    { prompt: 'e3', classes: ['book'], hint: '', difficulty: 'easy' },
+    { prompt: 'e4', classes: ['laptop'], hint: '', difficulty: 'easy' },
+    { prompt: 'h1', classes: ['sink'], hint: '', difficulty: 'hard' },
+    { prompt: 'h2', classes: ['car'], hint: '', difficulty: 'hard' },
+    { prompt: 'h3', classes: ['dog'], hint: '', difficulty: 'hard' },
+  ];
+  const order = buildSessionRoundOrder(tiered);
+  assertEqual(order.length, ROUND_COUNT, 'Round order has 5 indices');
+  const easySet = new Set([0, 1, 2, 3]);
+  const hardSet = new Set([4, 5, 6]);
+  const firstThreeEasy = order.slice(0, 3).every(i => easySet.has(i));
+  const lastTwoHard = order.slice(3, 5).every(i => hardSet.has(i));
+  assert(firstThreeEasy, 'Rounds 1–3 draw from easy pool');
+  assert(lastTwoHard, 'Rounds 4–5 draw from hard pool');
+  assert(new Set(order).size === ROUND_COUNT, 'No duplicate prompts in session');
 }
 
 // ── Suite: puzzle map validation ───────────────────────────────────────────

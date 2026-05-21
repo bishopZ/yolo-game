@@ -14,7 +14,7 @@
  *   STDOUT per frame: one JSON line {"found":bool,"boxes":...,"labels":...,"scores":...}
  *   First STDOUT line: {"ready":true} — subprocess signals warmup complete
  *
- * ADR-YG-05: Distribute as `npm start` — no signed .app required.
+ * ADR-YG-05 (dev): `npm start` for development. Packaged builds use electron-builder (see 05_build/macos-code-signing.md).
  *
  * CommonJS entry: Electron 42 / Node 24 cannot load the electron runtime API via ESM imports.
  */
@@ -26,13 +26,54 @@ const path = require('path');
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 
-const PYTHON = process.env.YOLO_PYTHON || 'python3';
-// Resolved at module load (see resolveModelPath)
-const SERVER_SCRIPT = path.join(__dirname, 'inference', 'server.py');
 const CONF = process.env.YOLO_CONF || '0.25';
 
-const SETUP_HINT =
-  'See README Setup step 4: convert yolo26n.pt to models/yolo26n.npz with yolo-mlx converters.';
+/** Packaged .app ships Resources/python + Resources/models; dev uses YOLO_PYTHON or system python3. */
+const bundledPythonDir = () =>
+  app.isPackaged ? path.join(process.resourcesPath, 'python') : null;
+
+const resolvePython = () => {
+  if (process.env.YOLO_PYTHON) return process.env.YOLO_PYTHON;
+  const root = bundledPythonDir();
+  if (root) {
+    const exe = path.join(root, 'bin', 'python3');
+    if (fs.existsSync(exe)) return exe;
+  }
+  return 'python3';
+};
+
+const pythonSpawnEnv = () => {
+  const root = bundledPythonDir();
+  if (!root) return { ...process.env };
+  const bin = path.join(root, 'bin');
+  return {
+    ...process.env,
+    VIRTUAL_ENV: root,
+    PATH: `${bin}${path.delimiter}${process.env.PATH || ''}`,
+  };
+};
+
+const SETUP_HINT_DEV =
+  'See README Setup: Python venv, pip install inference/requirements.txt, and models/yolo26n.npz.';
+const SETUP_HINT_PACKAGED =
+  'Reinstall Yolo Game from the latest release DMG. If this persists, report an issue with your Mac model (Apple Silicon required).';
+
+const appRoot = () => {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'app.asar.unpacked');
+  }
+  return __dirname;
+};
+
+const SERVER_SCRIPT = () => {
+  const root = appRoot();
+  const packaged = path.join(process.resourcesPath, 'inference', 'server.py');
+  const dev = path.join(__dirname, 'inference', 'server.py');
+  if (app.isPackaged && fs.existsSync(packaged)) return packaged;
+  return path.join(root, 'inference', 'server.py');
+};
+
+const setupHint = () => (app.isPackaged ? SETUP_HINT_PACKAGED : SETUP_HINT_DEV);
 
 // ── Model path helpers ────────────────────────────────────────────────────────
 
@@ -48,11 +89,25 @@ const isZipFile = (filePath) => {
   }
 };
 
+const modelsDir = () => {
+  if (app.isPackaged) {
+    return path.join(path.dirname(process.execPath), '..', 'Resources', 'models');
+  }
+  return path.join(__dirname, 'models');
+};
+
 const resolveModelPath = () => {
   if (process.env.YOLO_MODEL) return process.env.YOLO_MODEL;
 
-  const npz = path.join(__dirname, 'models', 'yolo26n.npz');
-  const pt = path.join(__dirname, 'models', 'yolo26n.pt');
+  const dir = modelsDir();
+  const npz = path.join(dir, 'yolo26n.npz');
+  const pt = path.join(dir, 'yolo26n.pt');
+  if (!app.isPackaged) {
+    const devNpz = path.join(__dirname, 'models', 'yolo26n.npz');
+    const devPt = path.join(__dirname, 'models', 'yolo26n.pt');
+    if (fs.existsSync(devNpz)) return devNpz;
+    if (fs.existsSync(devPt)) return devPt;
+  }
 
   if (fs.existsSync(npz) && isZipFile(npz)) return npz;
   if (fs.existsSync(pt)) return pt;
@@ -63,16 +118,18 @@ const resolveModelPath = () => {
 const MODEL_PATH_RESOLVED = resolveModelPath();
 
 const validateModelBeforeSpawn = () => {
+  const hint = setupHint();
   if (!fs.existsSync(MODEL_PATH_RESOLVED)) {
-    return `Model not found at ${MODEL_PATH_RESOLVED}. ${SETUP_HINT}`;
+    return `Model not found at ${MODEL_PATH_RESOLVED}. ${hint}`;
   }
   if (
     MODEL_PATH_RESOLVED.endsWith('.npz') &&
     !isZipFile(MODEL_PATH_RESOLVED) &&
+    !fs.existsSync(path.join(modelsDir(), 'yolo26n.pt')) &&
     !fs.existsSync(path.join(__dirname, 'models', 'yolo26n.pt'))
   ) {
     return (
-      `${MODEL_PATH_RESOLVED} is not a valid .npz archive (often a misnamed .pt file). ${SETUP_HINT}`
+      `${MODEL_PATH_RESOLVED} is not a valid .npz archive (often a misnamed .pt file). ${hint}`
     );
   }
   return null;
@@ -135,12 +192,15 @@ function startInferenceSubprocess() {
     return;
   }
 
+  const serverScript = SERVER_SCRIPT();
+  const python = resolvePython();
   console.log(
-    `[main] spawning inference subprocess: ${PYTHON} ${SERVER_SCRIPT} --model ${MODEL_PATH_RESOLVED}`,
+    `[main] spawning inference subprocess: ${python} ${serverScript} --model ${MODEL_PATH_RESOLVED}`,
   );
 
-  _proc = spawn(PYTHON, [SERVER_SCRIPT, '--model', MODEL_PATH_RESOLVED, '--conf', CONF], {
+  _proc = spawn(python, [serverScript, '--model', MODEL_PATH_RESOLVED, '--conf', CONF], {
     stdio: ['pipe', 'pipe', 'inherit'], // stdin+stdout piped; stderr to console
+    env: pythonSpawnEnv(),
   });
 
   // Read stdout line by line
@@ -164,7 +224,7 @@ function startInferenceSubprocess() {
       if (code !== 0 && !_inferenceReady) {
         _win.webContents.send(
           'inference-error',
-          `Inference exited with code ${code}. Check the terminal for details. ${SETUP_HINT}`,
+          `Inference exited with code ${code}. Check the terminal for details. ${setupHint()}`,
         );
       }
     }
@@ -173,7 +233,12 @@ function startInferenceSubprocess() {
 
   _proc.on('error', (err) => {
     console.error('[main] failed to spawn inference subprocess:', err.message);
-    console.error('[main] make sure Python is on PATH and yolo26mlx is installed in your venv.');
+    console.error(
+      '[main]',
+      app.isPackaged
+        ? 'embedded Python failed to start — try reinstalling from the latest DMG.'
+        : 'make sure Python is on PATH and yolo26mlx is installed in your venv.',
+    );
     _rejectPending({ error: err.message });
   });
 }

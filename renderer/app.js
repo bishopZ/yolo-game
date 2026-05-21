@@ -8,7 +8,7 @@
  *   - All 8 game screens driven by onState callbacks
  *   - IPC calls to window.yoloIPC.detectFrame (from preload.cjs)
  *   - Inference ready/crash events
- *   - Share to X and copy-to-clipboard
+ *   - Share (Facebook, Bluesky, score image, copy text)
  *
  * ADR-YG-06: Vanilla JS (no build step). ESM imports.
  */
@@ -19,6 +19,11 @@ import { createGame, STATES, ROUND_COUNT } from './game.js';
 import { resolveLabel, resolveLabels } from './coco_names.js';
 import { createTicker } from './ticker.js';
 import PUZZLE_MAP from './puzzle_map.json' with { type: 'json' };
+
+const SHARE_REPO_URL =
+  'https://github.com/bishopZ/yolo-game';
+const SHARE_RELEASE_URL =
+  'https://github.com/bishopZ/yolo-game/releases/latest';
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
 
@@ -41,6 +46,7 @@ const el = {
   cameraStatus:     $('camera-status'),
   countdownNum:     $('countdown-num'),
   promptRoundLabel: $('prompt-round-label'),
+  promptDifficulty: $('prompt-difficulty'),
   promptTarget:     $('prompt-target'),
   promptHint:       $('prompt-hint'),
   playVideo:        $('play-video'),
@@ -58,7 +64,9 @@ const el = {
   btnNextRound:     $('btn-next-round'),
   finalTotal:       $('final-total'),
   finalRounds:      $('final-rounds'),
-  btnShareX:        $('btn-share-x'),
+  btnShareFacebook: $('btn-share-facebook'),
+  btnShareBluesky:  $('btn-share-bluesky'),
+  btnShareDownload: $('btn-share-download'),
   btnShareCopy:     $('btn-share-copy'),
   btnPlayAgain:     $('btn-play-again'),
   playTickerTrack:  $('play-ticker-track'),
@@ -80,9 +88,34 @@ let _currentLabels = [];   // classes for the current target prompt
 let _foundThisRound = false;
 let _hasCompletedGame = false;
 let _cameraError = null;
+let _nearMissShown = false;
+let _pulsePhase = 0;
+let _lastShareFrame = null;
 
 // Canvas 2D context for drawing detection overlay
 let _overlayCtx = null;
+
+const _puzzleClassSet = new Set(
+  PUZZLE_MAP.flatMap(p => (p.classes || []).map(c => c.toLowerCase())),
+);
+
+const _prefersReducedMotion = () =>
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let _foundAudio = null;
+const playFoundSound = () => {
+  if (_prefersReducedMotion()) return;
+  try {
+    if (!_foundAudio) {
+      _foundAudio = new Audio('assets/found.wav');
+      _foundAudio.volume = 0.55;
+    }
+    _foundAudio.currentTime = 0;
+    void _foundAudio.play();
+  } catch {
+    /* optional asset */
+  }
+};
 
 // ── Screen management ────────────────────────────────────────────────────────
 
@@ -146,10 +179,15 @@ function onCountdown({ countdown }) {
 function onPrompt({ prompt }) {
   showScreen('prompt');
   el.promptRoundLabel.textContent = `Round ${game.getCurrentRound()} of ${ROUND_COUNT}`;
+  const tier = prompt.difficulty === 'hard' ? 'Hard' : 'Easy';
+  el.promptDifficulty.textContent = tier;
+  el.promptDifficulty.className = `prompt-difficulty prompt-difficulty--${prompt.difficulty || 'easy'}`;
+  el.promptDifficulty.hidden = false;
   el.promptTarget.textContent = prompt.prompt.replace(/^Find\s+a?\s*/i, '');
   el.promptHint.textContent = prompt.hint || '';
   _currentLabels = prompt.classes || [];
   _foundThisRound = false;
+  _nearMissShown = false;
 }
 
 async function onPlay({ round, totalRounds }) {
@@ -160,9 +198,12 @@ async function onPlay({ round, totalRounds }) {
   el.playPromptLabel.textContent = prompt ? prompt.prompt : '—';
   _currentLabels = prompt ? (prompt.classes || []) : [];
   _foundThisRound = false;
+  _nearMissShown = false;
+  _pulsePhase = 0;
   el.playFoundOverlay.classList.remove('visible');
 
   resetTicker();
+  detectionTicker.setTargetLabels(_currentLabels);
   await startCamera();
   startInferenceLoop();
   detectionTicker.start();
@@ -304,6 +345,7 @@ function startInferenceLoop() {
 
     drawOverlay(result, W, H);
     feedTicker(labels);
+    maybeNearMiss(labels);
 
     if (result.found && _currentLabels.length > 0) {
       const detected = labels.map(l => l.toLowerCase());
@@ -311,6 +353,8 @@ function startInferenceLoop() {
       const hit = targets.some(t => detected.includes(t));
       if (hit && !_foundThisRound && game.getState() === STATES.PLAY) {
         _foundThisRound = true;
+        captureShareFrame();
+        playFoundSound();
         el.playFoundOverlay.classList.add('visible');
         setTimeout(() => {
           el.playFoundOverlay.classList.remove('visible');
@@ -338,7 +382,43 @@ function resetTicker() {
 
 function feedTicker(labels) {
   detectionTicker.setExcludeLabels(_currentLabels);
+  detectionTicker.setTargetLabels(_currentLabels);
   detectionTicker.addDetections(labels);
+}
+
+function maybeNearMiss(labels) {
+  if (_nearMissShown || _foundThisRound) return;
+  const targets = _currentLabels.map(l => l.toLowerCase());
+  const hit = labels.some(l => targets.includes(l.toLowerCase()));
+  if (hit) return;
+  const near = labels.find(l => {
+    const key = l.toLowerCase();
+    return _puzzleClassSet.has(key) && !targets.includes(key);
+  });
+  if (!near) return;
+  _nearMissShown = true;
+  el.playPromptLabel.textContent = `Spotted ${near} — not this round's target`;
+  el.playPromptLabel.classList.add('near-miss');
+  setTimeout(() => {
+    el.playPromptLabel.classList.remove('near-miss');
+    const prompt = game.getCurrentPrompt();
+    el.playPromptLabel.textContent = prompt ? prompt.prompt : '—';
+  }, 2200);
+}
+
+function captureShareFrame() {
+  const vw = el.playVideo.videoWidth;
+  const vh = el.playVideo.videoHeight;
+  if (!vw || !vh) return;
+  const c = document.createElement('canvas');
+  c.width = vw;
+  c.height = vh;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(el.playVideo, 0, 0, vw, vh);
+  if (el.playCanvas.width > 0) {
+    ctx.drawImage(el.playCanvas, 0, 0, el.playCanvas.width, el.playCanvas.height, 0, 0, vw, vh);
+  }
+  _lastShareFrame = c;
 }
 
 // ── Detection overlay ─────────────────────────────────────────────────────────
@@ -354,6 +434,9 @@ function drawOverlay(result, captureW, captureH) {
   _overlayCtx.clearRect(0, 0, vw, vh);
 
   if (!result.boxes || result.boxes.length === 0) return;
+
+  _pulsePhase += 0.22;
+  const pulse = 0.65 + 0.35 * Math.sin(_pulsePhase);
 
   // Coordinate scale: capture → display
   const scaleX = vw / captureW;
@@ -372,9 +455,18 @@ function drawOverlay(result, captureW, captureH) {
     const rw  = (x2 - x1) * scaleX;
     const rh  = (y2 - y1) * scaleY;
 
-    _overlayCtx.strokeStyle = isTarget ? '#22c55e' : 'rgba(255,255,255,0.5)';
-    _overlayCtx.lineWidth   = isTarget ? 3 : 1.5;
+    _overlayCtx.globalAlpha = isTarget ? 1 : 0.35;
+    _overlayCtx.strokeStyle = isTarget ? '#22c55e' : 'rgba(255,255,255,0.45)';
+    _overlayCtx.lineWidth   = isTarget ? 2 + pulse * 2 : 1.5;
+    if (isTarget) {
+      _overlayCtx.shadowColor = '#22c55e';
+      _overlayCtx.shadowBlur = 8 + pulse * 6;
+    } else {
+      _overlayCtx.shadowBlur = 0;
+    }
     _overlayCtx.strokeRect(rx, ry, rw, rh);
+    _overlayCtx.shadowBlur = 0;
+    _overlayCtx.globalAlpha = 1;
 
     if (isTarget) {
       // Label pill
@@ -463,24 +555,93 @@ el.btnPlayAgain.addEventListener('click', () => {
   game.restart();
 });
 
-// Share to X (Twitter)
-el.btnShareX.addEventListener('click', () => {
+const buildShareMessage = () => {
   const score = game.getTotalScore();
-  const text  = encodeURIComponent(
-    `I scored ${score} points in Yolo Game — a real-world scavenger hunt powered by YOLO26 MLX on-device AI! 🎯 #YOLOMLX #WebAI`
+  return (
+    `I scored ${score} points in Yolo Game — a real-world scavenger hunt on YOLO26 MLX (on-device, no cloud). ` +
+    `Play: ${SHARE_RELEASE_URL} · Code: ${SHARE_REPO_URL} #YOLOMLX #WebAI`
   );
-  window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
+};
+
+const buildShareCardCanvas = () => {
+  const w = 1200;
+  const h = 630;
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(0, 0, w, h);
+
+  if (_lastShareFrame) {
+    const fw = _lastShareFrame.width;
+    const fh = _lastShareFrame.height;
+    const scale = Math.min((w - 80) / fw, (h - 200) / fh);
+    const dw = fw * scale;
+    const dh = fh * scale;
+    const dx = (w - dw) / 2;
+    const dy = 48;
+    ctx.drawImage(_lastShareFrame, dx, dy, dw, dh);
+  }
+
+  ctx.fillStyle = '#f0f0f0';
+  ctx.font = 'bold 52px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('YOLO GAME', w / 2, h - 120);
+  ctx.font = '36px -apple-system, sans-serif';
+  ctx.fillStyle = '#22c55e';
+  ctx.fillText(`${game.getTotalScore()} points`, w / 2, h - 68);
+  ctx.font = '18px -apple-system, sans-serif';
+  ctx.fillStyle = '#888';
+  ctx.fillText('Getting people back into the physical world', w / 2, h - 32);
+  return c;
+};
+
+const flashShareButton = (btn, okLabel, defaultLabel) => {
+  btn.textContent = okLabel;
+  setTimeout(() => { btn.textContent = defaultLabel; }, 2000);
+};
+
+el.btnShareFacebook.addEventListener('click', () => {
+  const u = encodeURIComponent(SHARE_REPO_URL);
+  window.open(`https://www.facebook.com/sharer/sharer.php?u=${u}`, '_blank', 'noopener');
 });
 
-// Copy score to clipboard
-el.btnShareCopy.addEventListener('click', () => {
-  const score = game.getTotalScore();
-  const text  = `Yolo Game score: ${score} pts 🎯 #YOLOMLX`;
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(text).then(() => {
-      el.btnShareCopy.textContent = '✅ Copied!';
-      setTimeout(() => { el.btnShareCopy.textContent = '📋 Copy'; }, 2000);
-    });
+el.btnShareBluesky.addEventListener('click', () => {
+  const text = encodeURIComponent(buildShareMessage());
+  window.open(`https://bsky.app/intent/compose?text=${text}`, '_blank', 'noopener');
+});
+
+el.btnShareDownload.addEventListener('click', () => {
+  const c = buildShareCardCanvas();
+  const link = document.createElement('a');
+  link.download = `yolo-game-score-${game.getTotalScore()}.png`;
+  link.href = c.toDataURL('image/png');
+  link.click();
+  flashShareButton(el.btnShareDownload, 'Saved!', 'Save image');
+});
+
+el.btnShareCopy.addEventListener('click', async () => {
+  const text = buildShareMessage();
+  const c = buildShareCardCanvas();
+  try {
+    if (navigator.clipboard?.write) {
+      const blob = await new Promise(res => c.toBlob(res, 'image/png'));
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/plain': new Blob([text], { type: 'text/plain' }),
+          'image/png': blob,
+        }),
+      ]);
+      flashShareButton(el.btnShareCopy, 'Copied!', 'Copy text');
+      return;
+    }
+  } catch {
+    /* fall through */
+  }
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    flashShareButton(el.btnShareCopy, 'Copied!', 'Copy text');
   }
 });
 

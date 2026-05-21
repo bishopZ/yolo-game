@@ -1,20 +1,11 @@
-# Yolo Game — Python inference subprocess requirements
-# Install in a virtual environment alongside your yolo-mlx clone.
+# Yolo Game — Python inference subprocess
+# Apple Silicon Mac only (MLX). Use Python 3.10–3.12 for the embedded bundle build.
 #
-# Prerequisites:
-#   Apple Silicon Mac (M1/M2/M3/M4) — MLX requires Apple Silicon
-#   Python 3.10+
-#
-# Setup:
-#   python3 -m venv .venv
-#   source .venv/bin/activate
+# From source:
+#   python3.12 -m venv .venv && source .venv/bin/activate
 #   pip install -r inference/requirements.txt
 #
-# Then download and convert the yolo26n weights (from the yolo-mlx repo root):
-#   bash scripts/download_yolo26_models.sh
-#   yolo-mlx converters convert models/yolo26n.pt -o models/yolo26n.npz --verify
-#
-# The game looks for weights at: models/yolo26n.npz (relative to the repo root)
+# Standalone .app: `bash scripts/prepare_bundle.sh` before `npm run dist`.
 
-yolo26mlx>=0.1.0
-numpy>=1.24.0
+yolo-mlx @ git+https://github.com/thewebAI/yolo-mlx.git@main
+numpy>=1.24.0,<3

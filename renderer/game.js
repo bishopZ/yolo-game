@@ -100,6 +100,46 @@ export function scoreForTimeout() {
   return 0;
 }
 
+const EASY_PER_SESSION = 3;
+const HARD_PER_SESSION = 2;
+
+/**
+ * Build round indices: 3 random easy prompts, then 2 random hard (rounds 1–3 / 4–5).
+ *
+ * @param {Object[]} puzzleMap
+ * @returns {number[]}
+ */
+export function buildSessionRoundOrder(puzzleMap) {
+  const easy = [];
+  const hard = [];
+  puzzleMap.forEach((entry, i) => {
+    const tier = entry.difficulty === 'hard' ? 'hard' : 'easy';
+    if (tier === 'hard') hard.push(i);
+    else easy.push(i);
+  });
+
+  if (easy.length < EASY_PER_SESSION || hard.length < HARD_PER_SESSION) {
+    throw new Error(
+      `puzzle_map needs ≥${EASY_PER_SESSION} easy and ≥${HARD_PER_SESSION} hard entries; ` +
+      `got ${easy.length} easy, ${hard.length} hard`,
+    );
+  }
+
+  return [
+    ..._shuffleStatic(easy).slice(0, EASY_PER_SESSION),
+    ..._shuffleStatic(hard).slice(0, HARD_PER_SESSION),
+  ];
+}
+
+function _shuffleStatic(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 // ── Round result type ──────────────────────────────────────────────────────
 
 /**
@@ -179,9 +219,7 @@ export function createGame({ onState, onTick, onRoundResult, puzzleMap = [] } = 
   }
 
   function _buildRoundOrder() {
-    const indices = _puzzleMap.map((_, i) => i);
-    const shuffled = _shuffle(indices);
-    return shuffled.slice(0, ROUND_COUNT);
+    return buildSessionRoundOrder(_puzzleMap);
   }
 
   function _startTick() {
@@ -269,6 +307,7 @@ export function createGame({ onState, onTick, onRoundResult, puzzleMap = [] } = 
 
     start() {
       if (_state !== STATES.IDLE) return;
+      buildSessionRoundOrder(_puzzleMap);
       if (_puzzleMap.length < ROUND_COUNT) {
         throw new Error(
           `Puzzle map has only ${_puzzleMap.length} entries; need at least ${ROUND_COUNT}.`
