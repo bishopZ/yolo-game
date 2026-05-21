@@ -15,7 +15,7 @@
   { "prompt": "Find a pair of scissors",        "classes": ["scissors"],      "hint": "Scissors — show the blades open or closed" },
   { "prompt": "Find a teddy bear",    "classes": ["teddy bear"],    "hint": "Any stuffed animal works!" },
   { "prompt": "Find a bowl",          "classes": ["bowl"],          "hint": "Cereal bowl, mixing bowl, soup bowl" },
-  { "prompt": "Find a utensile",          "classes": ["fork", "knife", "spoon"],          "hint": "Dinner fork or soup spoon, or a hunting knife" },
+  { "prompt": "Find a utensil",            "classes": ["fork", "knife", "spoon"],          "hint": "Dinner fork or soup spoon, or a hunting knife" },
   { "prompt": "Find a microwave",     "classes": ["microwave"],     "hint": "Microwave oven — look in the kitchen" },
   { "prompt": "Find a refrigerator",  "classes": ["refrigerator"],  "hint": "Fridge — show the door" },
   { "prompt": "Find a toaster",       "classes": ["toaster"],       "hint": "Toaster or toaster oven" },

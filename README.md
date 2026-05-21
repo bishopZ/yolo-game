@@ -2,7 +2,7 @@
 
 **Getting people back into the physical world** — one object at a time.
 
-Most games keep you seated, staring at a screen. Yolo Game does the opposite: it gives you a prompt, starts a 60-second countdown, and sends you sprinting through your house to hold a real object up to the camera before time runs out. YOLO26 MLX runs entirely on your Apple Silicon Mac — no cloud, no latency — recognizing objects as fast as you can find them.
+Most games keep you seated, staring at a screen. Yolo Game does the opposite: it gives you a prompt, starts a 2-minute countdown, and sends you sprinting through your house to hold a real object up to the camera before time runs out. YOLO26 MLX runs entirely on your Apple Silicon Mac — no cloud, no latency — recognizing objects as fast as you can find them.
 
 ---
 
@@ -10,10 +10,10 @@ Most games keep you seated, staring at a screen. Yolo Game does the opposite: it
 
 A local-first scavenger hunt game powered by [YOLO26 MLX](https://github.com/thewebAI/yolo-mlx) on-device object detection.
 
-- **5 rounds per session.** Each round shows you a target (e.g. "Find a cup or mug"), starts a 60-second timer, and activates your camera.
-- **Find it fast** — score decays linearly from 100 to 0 over the full minute.
-- **Tap Give Up** to bank ~15% of whatever score is left rather than risk the timeout penalty.
-- **Run out the clock** and you lose points.
+- **5 rounds per session.** Each round shows you a target (e.g. "Find a cup or mug"), starts a 2-minute timer, and activates your camera.
+- **Find it fast** — score decays linearly from 100 to 0 over 2 minutes. Finding the object scores 2× the current HUD value.
+- **Tap Give Up** to collect a share of remaining score — the share grows as time passes, so there's a sweet spot around the halfway mark.
+- **Run out the clock** and you score 0 for that round.
 - Works best on a Mac where you can move around — hold the laptop and walk room to room, or prop it up and run back with objects.
 
 Built for the **[WebAI YOLO26 MLX Build Challenge](https://community.webai.com/t/the-yolo26-mlx-build-challenge-may-2026/16)** — Austin-flavored track.
@@ -118,7 +118,7 @@ Renderer (Electron web view)
 
 Inference runs at ~5fps. Camera preview runs at native frame rate. Only the detection overlay updates at inference speed.
 
-**Model:** `yolo26n` — the smallest YOLO26 variant, ~6MB NPZ, 5.9ms inference on M4 Pro. COCO class vocabulary (80 classes) maps to the [puzzle map](renderer/puzzle_map.json) of 37+ household-findable prompts.
+**Model:** `yolo26n` — the smallest YOLO26 variant, ~6MB NPZ, 5.9ms inference on M4 Pro. COCO class vocabulary (80 classes) maps to the [puzzle map](renderer/puzzle_map.json) of 33 household-findable prompts.
 
 ---
 
@@ -155,7 +155,7 @@ yolo-game/
 │   ├── app.js               UI logic (state machine subscriber)
 │   ├── styles.css           Mobile-first responsive styles
 │   ├── game.js              State machine + scoring engine
-│   ├── puzzle_map.json      37 household prompts → COCO class names
+│   ├── puzzle_map.json      33 household prompts → COCO class names
 │   ├── test.html            IPC smoke-test page (dev use)
 │   └── tests/
 │       ├── scoring.test.js  Scoring unit tests (AC-07)
