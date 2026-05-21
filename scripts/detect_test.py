@@ -21,6 +21,10 @@ import argparse
 import sys
 from pathlib import Path
 
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_REPO_ROOT / "inference"))
+from coco_names import label_for_cls_id  # noqa: E402
+
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Standalone YOLO26 detection test")
@@ -73,7 +77,7 @@ def main() -> None:
             box = result.boxes.xyxy[i].tolist()
             score = float(result.boxes.conf[i])
             cls_id = int(result.boxes.cls[i])
-            label = result.names.get(cls_id, str(cls_id))
+            label = label_for_cls_id(cls_id, result.names)
             total_detections += 1
             ac04_flag = " ← AC-04" if label in AC04_CLASSES else ""
             print(f"  [{i+1:2d}] {label:<15s}  conf={score:.3f}  box={[round(v,1) for v in box]}{ac04_flag}")

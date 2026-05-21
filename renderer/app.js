@@ -16,6 +16,8 @@
 'use strict';
 
 import { createGame, STATES, ROUND_COUNT } from './game.js';
+import { resolveLabel, resolveLabels } from './coco_names.js';
+import { createTicker } from './ticker.js';
 import PUZZLE_MAP from './puzzle_map.json' with { type: 'json' };
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
@@ -36,6 +38,7 @@ const el = {
   warmingNote:      $('warming-note'),
   btnPlay:          $('btn-play'),
   btnBegin:         $('btn-begin'),
+  cameraStatus:     $('camera-status'),
   countdownNum:     $('countdown-num'),
   promptRoundLabel: $('prompt-round-label'),
   promptTarget:     $('prompt-target'),
@@ -58,7 +61,14 @@ const el = {
   btnShareX:        $('btn-share-x'),
   btnShareCopy:     $('btn-share-copy'),
   btnPlayAgain:     $('btn-play-again'),
+  playTickerTrack:  $('play-ticker-track'),
+  playTickerContainer: $('play-detection-ticker'),
 };
+
+const detectionTicker = createTicker({
+  trackEl: el.playTickerTrack,
+  containerEl: el.playTickerContainer,
+});
 
 // ── Camera / inference state ─────────────────────────────────────────────────
 
@@ -68,6 +78,8 @@ let _inferenceRunning = false;
 let _frameInterval = null;
 let _currentLabels = [];   // classes for the current target prompt
 let _foundThisRound = false;
+let _hasCompletedGame = false;
+let _cameraError = null;
 
 // Canvas 2D context for drawing detection overlay
 let _overlayCtx = null;
@@ -87,8 +99,8 @@ const game = createGame({
 
   onState(state, data) {
     switch (state) {
-      case STATES.IDLE:        showScreen('home'); break;
-      case STATES.TIPS:        showScreen('tips'); break;
+      case STATES.IDLE:        onIdle(); break;
+      case STATES.TIPS:        onTips(); break;
       case STATES.COUNTDOWN:   onCountdown(data); break;
       case STATES.PROMPT:      onPrompt(data); break;
       case STATES.PLAY:        onPlay(data); break;
@@ -110,6 +122,21 @@ const game = createGame({
 });
 
 // ── State handlers ────────────────────────────────────────────────────────────
+
+function onIdle() {
+  showScreen('home');
+  el.btnPlay.textContent = _hasCompletedGame ? 'Play Again' : 'Play Now';
+  el.btnNextRound.textContent = 'Next Round →';
+}
+
+async function onTips() {
+  showScreen('tips');
+  el.cameraStatus.textContent = '';
+  el.btnBegin.disabled = false;
+  _cameraError = null;
+  await startCamera();
+  updateCameraStatus();
+}
 
 function onCountdown({ countdown }) {
   showScreen('countdown');
@@ -135,14 +162,20 @@ async function onPlay({ round, totalRounds }) {
   _foundThisRound = false;
   el.playFoundOverlay.classList.remove('visible');
 
+  resetTicker();
   await startCamera();
   startInferenceLoop();
+  detectionTicker.start();
 }
 
 function onRoundSummary({ result }) {
   stopInferenceLoop();
+  resetTicker();
   stopCamera();
   showScreen('roundSummary');
+
+  el.btnNextRound.textContent =
+    game.getCurrentRound() >= ROUND_COUNT ? 'Complete' : 'Next Round →';
 
   const ICONS    = { found: '✅', gave_up: '🏳', timeout: '⏰' };
   const LABELS   = { found: 'Found it!', gave_up: 'Gave Up', timeout: "Time's Up" };
@@ -159,6 +192,7 @@ function onRoundSummary({ result }) {
 }
 
 function onFinalSummary({ totalScore, rounds }) {
+  _hasCompletedGame = true;
   showScreen('finalSummary');
   el.finalTotal.textContent = totalScore;
 
@@ -179,15 +213,32 @@ function onFinalSummary({ totalScore, rounds }) {
 // ── Camera ────────────────────────────────────────────────────────────────────
 
 async function startCamera() {
-  if (_cameraStream) return;
+  if (_cameraStream) return true;
   try {
     _cameraStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
     });
     el.playVideo.srcObject = _cameraStream;
     await el.playVideo.play();
+    _cameraError = null;
+    return true;
   } catch (err) {
-    console.warn('[app] camera error:', err.message);
+    _cameraError = err.message || 'Camera access denied';
+    console.warn('[app] camera error:', _cameraError);
+    return false;
+  }
+}
+
+function updateCameraStatus() {
+  if (_cameraStream) {
+    el.cameraStatus.textContent = '';
+    el.btnBegin.disabled = false;
+    return;
+  }
+  if (_cameraError) {
+    el.cameraStatus.textContent =
+      `Camera required: ${_cameraError}. Allow access in System Settings, then tap Begin again.`;
+    el.btnBegin.disabled = true;
   }
 }
 
@@ -239,11 +290,23 @@ function startInferenceLoop() {
 
     if (!result || result.dropped || result.warming) return;
 
-    drawOverlay(result, W, H);
+    const labels = resolveLabels(result.labels || []);
+    result.labels = labels;
 
-    // Check if any detected label matches the target
+    if (result.found) {
+      const scores = result.scores || [];
+      const summary = labels.map((label, i) => {
+        const pct = scores[i] != null ? `${Math.round(scores[i] * 100)}%` : '?';
+        return `${label} (${pct})`;
+      }).join(', ');
+      console.log(`[yolo] ${summary || 'detection (no labels)'}`);
+    }
+
+    drawOverlay(result, W, H);
+    feedTicker(labels);
+
     if (result.found && _currentLabels.length > 0) {
-      const detected = (result.labels || []).map(l => l.toLowerCase());
+      const detected = labels.map(l => l.toLowerCase());
       const targets  = _currentLabels.map(l => l.toLowerCase());
       const hit = targets.some(t => detected.includes(t));
       if (hit && !_foundThisRound && game.getState() === STATES.PLAY) {
@@ -263,10 +326,19 @@ function stopInferenceLoop() {
     clearInterval(_frameInterval);
     _frameInterval = null;
   }
-  // Clear overlay
   if (_overlayCtx) {
     _overlayCtx.clearRect(0, 0, el.playCanvas.width, el.playCanvas.height);
   }
+}
+
+function resetTicker() {
+  detectionTicker.stop();
+  detectionTicker.reset();
+}
+
+function feedTicker(labels) {
+  detectionTicker.setExcludeLabels(_currentLabels);
+  detectionTicker.addDetections(labels);
 }
 
 // ── Detection overlay ─────────────────────────────────────────────────────────
@@ -289,7 +361,9 @@ function drawOverlay(result, captureW, captureH) {
 
   result.boxes.forEach((box, i) => {
     const [x1, y1, x2, y2] = box;
-    const label  = result.labels[i] || '';
+    const label  = resolveLabel(result.labels[i] || '');
+    if (label.toLowerCase() === 'person') return;
+
     const score  = result.scores[i] || 0;
     const isTarget = _currentLabels.map(l => l.toLowerCase()).includes(label.toLowerCase());
 
@@ -364,7 +438,12 @@ el.btnPlay.addEventListener('click', () => {
   game.start();
 });
 
-el.btnBegin.addEventListener('click', () => {
+el.btnBegin.addEventListener('click', async () => {
+  if (!_cameraStream) {
+    const ok = await startCamera();
+    updateCameraStatus();
+    if (!ok) return;
+  }
   game.beginPlay();
 });
 

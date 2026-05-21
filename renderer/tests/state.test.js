@@ -224,7 +224,7 @@ console.log('\n── Score accumulation (via internal _recordRoundResult) ─�
   assert(total === s1 + s2 + s3, 'Score arithmetic is consistent');
   assert(s1 > s2, 'Find score > Give Up score (at same elapsed time)');
   assert(s2 >= 0, 'Give Up score is non-negative');
-  assert(s3 < 0, 'Timeout score is negative (TIMEOUT_PENALTY)');
+  assertEqual(s3, 0, 'Timeout score is 0');
 }
 
 // ── Suite: STATES constants cover all 8 states ────────────────────────────

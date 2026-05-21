@@ -42,6 +42,8 @@ from pathlib import Path
 
 import numpy as np
 
+from coco_names import label_for_cls_id
+
 try:
     from yolo26mlx import YOLO as YOLO26
 except ImportError as exc:
@@ -64,8 +66,8 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--conf",
         type=float,
-        default=0.5,
-        help="Confidence threshold (default: 0.5)",
+        default=0.1,
+        help="Confidence threshold (default: 0.1)",
     )
     return p.parse_args()
 
@@ -228,7 +230,7 @@ def _detect(
             box = result.boxes.xyxy[i].tolist()
             score = float(result.boxes.conf[i])
             cls_id = int(result.boxes.cls[i])
-            label = result.names.get(cls_id, str(cls_id))
+            label = label_for_cls_id(cls_id, result.names)
             boxes.append([round(v, 1) for v in box])
             labels.append(label)
             scores.append(round(score, 3))

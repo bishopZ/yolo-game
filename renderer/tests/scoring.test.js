@@ -1,12 +1,6 @@
 /**
  * renderer/tests/scoring.test.js
- * ──────────────────────────────
- * Unit tests for the Yolo Game scoring engine (AC-07).
- *
- * Tests three AC-07 scenarios:
- *   (a) Find at 30s → score = 50
- *   (b) Timeout → score = TIMEOUT_PENALTY (-10)
- *   (c) Give Up at 30s → score ≈ 15% of 50 remaining = 7
+ * Unit tests for the Yolo Game scoring engine.
  *
  * Run from repo root:
  *   node renderer/tests/scoring.test.js
@@ -15,13 +9,15 @@
 'use strict';
 
 import {
+  currentRoundScore,
+  giveUpPct,
   scoreForFind,
   scoreForGiveUp,
   scoreForTimeout,
   MAX_ROUND_SCORE,
   ROUND_TIME_S,
-  TIMEOUT_PENALTY,
-  GIVE_UP_FRACTION,
+  GIVE_UP_PCT_START,
+  GIVE_UP_PCT_END,
 } from '../game.js';
 
 let passed = 0;
@@ -47,136 +43,65 @@ function assertEqual(actual, expected, message) {
   }
 }
 
-function assertApprox(actual, expected, tolerance, message) {
-  if (Math.abs(actual - expected) <= tolerance) {
-    console.log(`  PASS  ${message}  (${actual})`);
-    passed++;
-  } else {
-    console.error(`  FAIL  ${message}  expected≈${expected}±${tolerance} actual=${actual}`);
-    failed++;
-  }
-}
+console.log('\n── currentRoundScore (HUD) ───────────────────────');
 
-// ── Suite: scoreForFind ────────────────────────────────────────────────────
+assertEqual(currentRoundScore(0), MAX_ROUND_SCORE, 'HUD at t=0 → 100');
+assertEqual(currentRoundScore(60), 50, 'HUD at 60s on 120s round → 50');
+assertEqual(currentRoundScore(ROUND_TIME_S), 0, 'HUD at 120s → 0');
 
-console.log('\n── scoreForFind ──────────────────────────────────');
+console.log('\n── scoreForFind (2× HUD) ─────────────────────────');
 
-assertEqual(
-  scoreForFind(0),
-  MAX_ROUND_SCORE,
-  'Find at t=0 → max score (100)'
-);
+assertEqual(scoreForFind(0), 200, 'Find at t=0 → 200');
+assertEqual(scoreForFind(60), 100, 'Find at 60s → 100');
+assertEqual(scoreForFind(ROUND_TIME_S), 0, 'Find at timeout → 0');
 
-assertEqual(
-  scoreForFind(ROUND_TIME_S / 2),  // t=30s
-  50,
-  'AC-07(a): Find at 30s → score = 50'
-);
+console.log('\n── giveUpPct ─────────────────────────────────────');
 
-assertEqual(
-  scoreForFind(ROUND_TIME_S),  // t=60s
-  0,
-  'Find at exactly 60s → score = 0'
-);
-
-assertEqual(
-  scoreForFind(ROUND_TIME_S + 5),  // past timeout
-  0,
-  'Find past 60s → score = 0 (not negative)'
-);
-
-assertEqual(
-  scoreForFind(ROUND_TIME_S * 0.1),  // t=6s — early find
-  Math.floor((1 - 0.1) * MAX_ROUND_SCORE),
-  'Find at 10% of time → 90 points'
-);
-
-assertEqual(
-  scoreForFind(ROUND_TIME_S * 0.9),  // t=54s — late find
-  Math.floor((1 - 0.9) * MAX_ROUND_SCORE),
-  'Find at 90% of time → 10 points'
-);
-
-// ── Suite: scoreForTimeout ─────────────────────────────────────────────────
-
-console.log('\n── scoreForTimeout ───────────────────────────────');
-
-assertEqual(
-  scoreForTimeout(),
-  TIMEOUT_PENALTY,
-  'AC-07(b): Timeout → TIMEOUT_PENALTY (-10)'
-);
-
-assert(
-  scoreForTimeout() < 0,
-  'Timeout score is negative'
-);
-
-// ── Suite: scoreForGiveUp ──────────────────────────────────────────────────
+assertEqual(giveUpPct(0), GIVE_UP_PCT_START, 'Give-up % at start → 10%');
+assertEqual(giveUpPct(60), 0.5, 'Give-up % at 60s → 50%');
+assertEqual(giveUpPct(ROUND_TIME_S), GIVE_UP_PCT_END, 'Give-up % at end → 90%');
 
 console.log('\n── scoreForGiveUp ────────────────────────────────');
 
-const giveUpAt30 = scoreForGiveUp(30);
-const remainingScoreAt30 = Math.max(0, scoreForFind(30));  // 50
-const expectedGiveUp30 = Math.floor(remainingScoreAt30 * GIVE_UP_FRACTION);  // floor(50 * 0.15) = 7
+assertEqual(scoreForGiveUp(0), 10, 'Give up at start → 10 (10% × 100)');
+assertEqual(scoreForGiveUp(60), 25, 'Give up at 60s → 25 (50% × 50)');
+assertEqual(scoreForGiveUp(ROUND_TIME_S), 0, 'Give up at timeout → 0');
 
-assertEqual(
-  giveUpAt30,
-  expectedGiveUp30,
-  `AC-07(c): Give Up at 30s → ≈15% of 50 remaining = ${expectedGiveUp30}`
-);
+console.log('\n── scoreForTimeout ───────────────────────────────');
 
-assertApprox(
-  giveUpAt30 / remainingScoreAt30,
-  GIVE_UP_FRACTION,
-  0.05,  // within 5% of 15%
-  `Give Up fraction ≈ ${Math.round(GIVE_UP_FRACTION * 100)}% of remaining score`
-);
+assertEqual(scoreForTimeout(), 0, 'Timeout → 0');
+assert(scoreForTimeout() >= 0, 'Timeout score is non-negative');
 
-assertEqual(
-  scoreForGiveUp(0),
-  Math.floor(MAX_ROUND_SCORE * GIVE_UP_FRACTION),
-  'Give Up immediately → fraction of max score'
-);
+console.log('\n── Monotonicity ──────────────────────────────────');
 
-assertEqual(
-  scoreForGiveUp(ROUND_TIME_S),
-  0,
-  'Give Up at timeout → 0 (no remaining score to fraction)'
-);
-
-assert(
-  scoreForGiveUp(30) >= 0,
-  'Give Up score is non-negative'
-);
-
-// ── Suite: score monotonicity ──────────────────────────────────────────────
-
-console.log('\n── Score monotonicity ────────────────────────────');
-
-let mono = true;
+let hudMono = true;
 for (let t = 0; t < ROUND_TIME_S; t += 5) {
-  if (scoreForFind(t) < scoreForFind(t + 5)) {
-    mono = false;
+  if (currentRoundScore(t) < currentRoundScore(t + 5)) {
+    hudMono = false;
     break;
   }
 }
-assert(mono, 'scoreForFind is non-increasing over time');
+assert(hudMono, 'currentRoundScore is non-increasing over time');
 
-// ── Suite: Give Up always ≤ Find ──────────────────────────────────────────
+let pctMono = true;
+for (let t = 0; t < ROUND_TIME_S; t += 5) {
+  if (giveUpPct(t) > giveUpPct(t + 5)) {
+    pctMono = false;
+    break;
+  }
+}
+assert(pctMono, 'giveUpPct is non-decreasing over time');
 
-console.log('\n── Give Up ≤ Find score at same elapsed time ────');
+console.log('\n── Give Up ≤ Find at same elapsed time ───────────');
 
-let giveUpAlwaysLess = true;
+let giveUpLeFind = true;
 for (let t = 0; t < ROUND_TIME_S; t += 10) {
   if (scoreForGiveUp(t) > scoreForFind(t)) {
-    giveUpAlwaysLess = false;
+    giveUpLeFind = false;
     break;
   }
 }
-assert(giveUpAlwaysLess, 'Give Up score ≤ Find score at any elapsed time');
-
-// ── Summary ────────────────────────────────────────────────────────────────
+assert(giveUpLeFind, 'Give Up score ≤ Find score at any elapsed time');
 
 console.log('\n─────────────────────────────────────────────────');
 console.log(`  Total: ${passed + failed}  Passed: ${passed}  Failed: ${failed}`);

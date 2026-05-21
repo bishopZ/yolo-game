@@ -29,7 +29,7 @@ const path = require('path');
 const PYTHON = process.env.YOLO_PYTHON || 'python3';
 // Resolved at module load (see resolveModelPath)
 const SERVER_SCRIPT = path.join(__dirname, 'inference', 'server.py');
-const CONF = process.env.YOLO_CONF || '0.3';
+const CONF = process.env.YOLO_CONF || '0.25';
 
 const SETUP_HINT =
   'See README Setup step 4: convert yolo26n.pt to models/yolo26n.npz with yolo-mlx converters.';
@@ -91,10 +91,10 @@ let _lineBuffer = '';        // partial line buffer for stdout
 
 function createWindow() {
   _win = new BrowserWindow({
-    width: 390,
-    height: 844,
-    minWidth: 320,
-    minHeight: 568,
+    width: 1024,
+    height: 768,
+    minWidth: 800,
+    minHeight: 600,
     backgroundColor: '#0a0a0a',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -102,7 +102,7 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: false, // required for contextBridge module imports
     },
-    titleBarStyle: 'hiddenInset',
+    titleBarStyle: 'default',
     title: 'Yolo Game',
   });
 

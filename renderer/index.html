@@ -32,17 +32,18 @@
       </li>
       <li>
         <span class="tips-icon">⏱</span>
-        <span>Faster finds earn more points. Let time run out and you lose points.</span>
+        <span>Points tick down from 100 over 2 minutes. Finding the object doubles what’s on screen. Time’s up earns zero.</span>
       </li>
       <li>
         <span class="tips-icon">🏳</span>
-        <span>Tap <strong>Give Up</strong> to cut your losses and earn a small consolation score.</span>
+        <span>Tap <strong>Give Up</strong> for a share of what’s left—the longer you try, the better the payout.</span>
       </li>
       <li>
         <span class="tips-icon">🏠</span>
         <span>Get off the couch — walk around, check every room.</span>
       </li>
     </ul>
+    <p id="camera-status" class="camera-status" role="alert"></p>
     <button id="btn-begin" class="btn btn-primary">Begin</button>
   </section>
 
@@ -68,12 +69,15 @@
       <div id="play-found-overlay" class="play-overlay-found">✓</div>
       <div class="play-hud">
         <span id="play-prompt-label" class="play-prompt-label">—</span>
-        <span id="play-timer" class="play-timer mono">0:60</span>
+        <span id="play-timer" class="play-timer mono">2:00</span>
       </div>
       <div class="play-score-hud">
         <div id="play-score-value" class="play-score-value">100</div>
         <div class="play-score-label">pts available</div>
       </div>
+    </div>
+    <div id="play-detection-ticker" class="play-detection-ticker" aria-live="polite">
+      <div id="play-ticker-track" class="play-ticker-track"></div>
     </div>
     <div class="play-controls">
       <span id="play-round-label" class="play-round-label">Round 1 of 5</span>
@@ -104,7 +108,7 @@
       <button id="btn-share-x" class="btn-share" title="Share on X">𝕏 Share</button>
       <button id="btn-share-copy" class="btn-share" title="Copy score">📋 Copy</button>
     </div>
-    <button id="btn-play-again" class="btn btn-primary">Play Again</button>
+    <button id="btn-play-again" class="btn btn-primary">Return to Home</button>
   </section>
 
 </div><!-- #app -->
