@@ -25,6 +25,7 @@
   "build": {
     "appId": "com.bishopz.yologame",
     "productName": "Yolo Game",
+    "icon": "build/MLX.png",
     "directories": {
       "output": "dist"
     },
@@ -61,6 +62,7 @@
       "inference/**"
     ],
     "mac": {
+      "icon": "build/MLX.png",
       "category": "public.app-category.games",
       "target": [
         { "target": "dmg", "arch": ["arm64"] },

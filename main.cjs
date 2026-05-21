@@ -27,6 +27,7 @@ const path = require('path');
 // ── Configuration ─────────────────────────────────────────────────────────────
 
 const CONF = process.env.YOLO_CONF || '0.25';
+const APP_ICON = path.join(__dirname, 'build', 'MLX.png');
 
 /** Packaged .app ships Resources/python + Resources/models; dev uses YOLO_PYTHON or system python3. */
 const bundledPythonDir = () =>
@@ -152,6 +153,7 @@ function createWindow() {
     height: 768,
     minWidth: 800,
     minHeight: 600,
+    icon: APP_ICON,
     backgroundColor: '#0a0a0a',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
