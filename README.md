@@ -30,6 +30,32 @@ Built for the **[WebAI YOLO26 MLX Build Challenge](https://community.webai.com/t
 
 ---
 
+## Download the Mac app (standalone - no terminal)
+
+Pre-built **Apple Silicon** releases include the game, **yolo26n** weights, and an embedded Python/MLX runtime. No Homebrew, venv, or manual model download required.
+
+**[Latest release (DMG)](https://bishopZ.com/images/dist/Yolo Game-1.0.0-arm64.dmg)**
+
+1. Open the DMG and drag **Yolo Game** to Applications.
+2. Launch the app; allow **camera** access when macOS prompts.
+3. Wait for “Loading inference model…” to finish (~5-10s first launch), then tap **Play Now**.
+
+**Requirements:** Apple Silicon Mac (M1–M4), macOS 13+.
+
+### Build a standalone DMG yourself
+
+From `repo/` on an Apple Silicon Mac with Python 3.10–3.12:
+
+```bash
+npm install
+npm run dist    # runs prepare:bundle, then electron-builder (signed if APPLE_* env set)
+npm run pack    # unsigned .app in dist/mac-arm64/ for smoke tests
+```
+
+`scripts/prepare_bundle.sh` creates `bundle/python` (embedded venv) and `bundle/models/yolo26n.npz` before packaging. See **[docs/macos-code-signing.md](docs/macos-code-signing.md)** for signing and notarization.
+
+---
+
 ## Setup (from source - developers)
 
 Use this path if you are hacking on the game or running `npm start` without a release DMG. The **signed DMG** does not need these steps.
@@ -101,32 +127,6 @@ npm start
 The app launches an Electron window. The model loads and warms up in the background (JIT compile on first inference - typically 5-10 seconds on M-series). The **Play Now** button activates once the model is ready.
 
 > **Camera permission:** macOS may prompt for camera access. Click Allow.
-
----
-
-## Download the Mac app (standalone - no terminal)
-
-Pre-built **Apple Silicon** releases include the game, **yolo26n** weights, and an embedded Python/MLX runtime. No Homebrew, venv, or manual model download required.
-
-**[Latest release (DMG)](https://bishopZ.com/dist/yolo-game/)**
-
-1. Open the DMG and drag **Yolo Game** to Applications.
-2. Launch the app; allow **camera** access when macOS prompts.
-3. Wait for “Loading inference model…” to finish (~5-10s first launch), then tap **Play Now**.
-
-**Requirements:** Apple Silicon Mac (M1–M4), macOS 13+.
-
-### Build a standalone DMG yourself
-
-From `repo/` on an Apple Silicon Mac with Python 3.10–3.12:
-
-```bash
-npm install
-npm run dist    # runs prepare:bundle, then electron-builder (signed if APPLE_* env set)
-npm run pack    # unsigned .app in dist/mac-arm64/ for smoke tests
-```
-
-`scripts/prepare_bundle.sh` creates `bundle/python` (embedded venv) and `bundle/models/yolo26n.npz` before packaging. See **[docs/macos-code-signing.md](docs/macos-code-signing.md)** for signing and notarization.
 
 ---
 
