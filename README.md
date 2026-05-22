@@ -34,7 +34,7 @@ Built for the **[WebAI YOLO26 MLX Build Challenge](https://community.webai.com/t
 
 Pre-built **Apple Silicon** releases include the game, **yolo26n** weights, and an embedded Python/MLX runtime. No Homebrew, venv, or manual model download required.
 
-**[Latest release (DMG)](https://bishopZ.com/images/dist/Yolo Game-1.0.0-arm64.dmg)**
+**[Latest release (DMG)](https://github.com/bishopZ/yolo-game/releases/download/v1.0.0/Yolo.Game-1.0.0-arm64.dmg)**
 
 1. Open the DMG and drag **Yolo Game** to Applications.
 2. Launch the app; allow **camera** access when macOS prompts.
