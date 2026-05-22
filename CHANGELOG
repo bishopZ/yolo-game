@@ -1,0 +1,52 @@
+# Changelog
+
+All notable changes to [Yolo Game](https://github.com/bishopZ/yolo-game) are documented here.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.0.0] - 2026-05-21
+
+First public release — built for the [WebAI YOLO26 MLX Build Challenge](https://community.webai.com/t/the-yolo26-mlx-build-challenge-may-2026/16) (May 2026).
+
+### Game
+
+- **5-round scavenger hunt** — find real household objects on camera before time runs out.
+- **Session difficulty curve** — rounds 1–3 draw random **easy** prompts; rounds 4–5 draw random **hard** prompts.
+- **33 puzzles** in `renderer/puzzle_map.json`, each mapping a player-facing prompt to one or more COCO-80 class names.
+- **2-minute rounds** — HUD score decays linearly from 100 to 0; finding the target scores **2×** the value on screen at find time; **Give Up** pays a growing share of the remaining HUD score (10% at round start → 90% at round end); timeout scores **0**.
+- **Full UI flow** — Home → Tips → 3-2-1 countdown → Prompt → Play → Round summary → Final summary → Play again.
+- **Mobile-first layout** — portrait-friendly tap targets and responsive CSS for one-handed play while moving around.
+
+### Detection & inference
+
+- **On-device YOLO26 MLX** — `yolo26n` (~6 MB NPZ) via [yolo-mlx](https://github.com/thewebAI/yolo-mlx); no cloud, no account.
+- **Electron + Python subprocess** — camera frames (640×480 RGBA) over IPC; line-delimited JSON detections on stdout; model warmup and `{"ready":true}` before **Play Now** unlocks.
+- **~5 fps inference overlay** on live camera preview with bounding boxes and class labels.
+- **Detection feedback** — pulsing highlight on target-class boxes; scrolling detection ticker with target-class emphasis; one **near-miss** hint per round when a puzzle-map class is seen but not the round target; found burst animation and `found.wav` (respects `prefers-reduced-motion`); non-target boxes drawn at reduced opacity.
+- Default confidence threshold **0.25** (`YOLO_CONF` env override).
+
+### Distribution
+
+- **macOS Apple Silicon app** — signed/notarized DMG path via `electron-builder` with embedded Python runtime and bundled `yolo26n.npz` (`npm run dist`).
+- **Developer path** — `npm start` with local venv and `models/yolo26n.npz` per README.
+- **Camera permission** — `NSCameraUsageDescription` in packaged app entitlements.
+
+### Sharing
+
+- Final score screen: **Facebook** and **Bluesky** share links, **Save image** (1200×630 PNG with score and optional last camera frame), and **Copy text**.
+
+### Developer & docs
+
+- Vanilla HTML/CSS/JS renderer (no React build step); `main.cjs` / `preload.cjs` (CommonJS for Electron 42).
+- Unit tests: `npm test` — scoring engine and state machine (`renderer/tests/`).
+- Helper scripts: `scripts/setup_model.sh`, `scripts/prepare_bundle.sh`, `scripts/time_ipc.py`, `scripts/detect_test.py`.
+- README: purpose, setup, architecture, custom puzzle extension (COCO-only and custom-class paths).
+- License: **AGPL-3.0**.
+
+### Requirements
+
+- Apple Silicon Mac (M1–M4), macOS 13+
+- Python 3.10–3.12 and Node.js 18+ for source development; standalone DMG includes embedded runtime
+
+[1.0.0]: https://github.com/bishopZ/yolo-game/releases/tag/v1.0.0

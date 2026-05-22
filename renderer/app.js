@@ -82,7 +82,6 @@ const detectionTicker = createTicker({
 
 let _cameraStream = null;
 let _inferenceReady = false;
-let _inferenceRunning = false;
 let _frameInterval = null;
 let _currentLabels = [];   // classes for the current target prompt
 let _foundThisRound = false;
@@ -132,11 +131,11 @@ const game = createGame({
 
   onState(state, data) {
     switch (state) {
-      case STATES.IDLE:        onIdle(); break;
-      case STATES.TIPS:        onTips(); break;
-      case STATES.COUNTDOWN:   onCountdown(data); break;
-      case STATES.PROMPT:      onPrompt(data); break;
-      case STATES.PLAY:        onPlay(data); break;
+      case STATES.IDLE:          onIdle(); break;
+      case STATES.TIPS:          onTips(); break;
+      case STATES.COUNTDOWN:     onCountdown(data); break;
+      case STATES.PROMPT:        onPrompt(data); break;
+      case STATES.PLAY:          onPlay(data); break;
       case STATES.ROUND_SUMMARY: onRoundSummary(data); break;
       case STATES.FINAL_SUMMARY: onFinalSummary(data); break;
     }
