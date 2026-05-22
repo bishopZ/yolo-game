@@ -108,7 +108,7 @@ The app launches an Electron window. The model loads and warms up in the backgro
 
 Pre-built **Apple Silicon** releases include the game, **yolo26n** weights, and an embedded Python/MLX runtime. No Homebrew, venv, or manual model download required.
 
-**[Latest release (DMG)](https://github.com/bishopZ/yolo-game/releases/latest)**
+**[Latest release (DMG)](https://bishopZ.com/dist/yolo-game/)**
 
 1. Open the DMG and drag **Yolo Game** to Applications.
 2. Launch the app; allow **camera** access when macOS prompts.
