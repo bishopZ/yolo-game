@@ -224,6 +224,18 @@ yolo-game/
 
 ---
 
+## Why the Austin-flavored category?
+
+This city's motto used to be "Austin, the friendly city." It *is* a friendly town. People talk to each other in the grocery store, on the street, in the park. Austinites are very present in the physical world. When thinking about the challenge and the Austin category, I didn't want to just slap a bat logo on the title screen. I wanted to build a product that is shaped by the place, the culture, and daily life. I didn't want it be superficially Austin-themed. Such as, a traffic monitor that just happens to be in Austin. I also didn't want it to be stereotypical: bats, tacos, keeping it weird. I wanted something that would capture the lifeblood of the city: curious, friendly, fun, supportive, and experimental. I wanted something that used the newest technology, yet gets us to re-engage with our physical environment.  
+  
+Yolo Game fits that frame in a few concrete ways.
+
+- **Get out of your chair:** It assumes a real home, not a staged lab bench. You move room to room. The camera is the referee.
+- **Have fun:** Yolo Game is a game after all, but the most fun part is that anyone can run inference to create new puzzles. The core game mechanices scale beyond what the game ships with.
+- **Make friends:** Yolo Game is fun to play solo, but it's even more fun to play with friends or family. It doesn't require a group, but it' an immediate activity or ice breaker for any social gathering.
+
+---
+
 ## License
 
 [AGPL-3.0](LICENSE) - required by the WebAI challenge terms. See `LICENSE` for full text.
