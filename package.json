@@ -1,6 +1,6 @@
 {
   "name": "yolo-game",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A scavenger hunt game powered by local-first YOLO26 MLX detection — getting people back into the physical world.",
   "main": "main.cjs",
   "author": "Bishop Zareh",

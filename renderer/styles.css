@@ -197,11 +197,13 @@ html, body {
   color: var(--red);
   line-height: 1;
   text-align: center;
-  animation: pulse 0.9s ease-in-out infinite;
 }
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50%       { transform: scale(1.06); opacity: 0.85; }
+.countdown-number.countdown-grow {
+  animation: countdown-grow 1s ease-out forwards;
+}
+@keyframes countdown-grow {
+  0%   { transform: scale(0.45); opacity: 0.65; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 /* ── PROMPT SCREEN ───────────────────────────────────────────────────────────── */
@@ -237,7 +239,7 @@ html, body {
 }
 .prompt-hint {
   font-size: 14px;
-  color: var(--text-muted);
+  color: #9ca3af;
   text-align: center;
   margin-top: 10px;
   font-style: italic;
@@ -293,7 +295,6 @@ html, body {
   40%  { opacity: 1; transform: scale(1.03); }
   100% { opacity: 1; transform: scale(1); }
 }
-.play-prompt-label.near-miss { color: #fcd34d; }
 .play-hud {
   position: absolute;
   top: 0; left: 0; right: 0;
@@ -305,8 +306,11 @@ html, body {
   background: linear-gradient(to bottom, rgba(0,0,0,0.75), transparent);
 }
 .play-prompt-label {
-  font-size: 16px;
+  flex: 1;
+  max-width: 65%;
+  font-size: 14px;
   font-weight: 700;
+  line-height: 1.2;
   color: #fff;
   text-shadow: 0 1px 4px rgba(0,0,0,0.8);
 }
@@ -463,20 +467,33 @@ html, body {
 .final-round-score.zero { color: var(--text-dim); }
 .final-share-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: center;
   gap: 8px;
   margin-bottom: 20px;
-  max-width: 360px;
 }
 .btn-share {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--surface2);
   color: var(--text-dim);
   border: 1px solid var(--border);
-  font-size: 14px;
-  padding: 10px 16px;
+  padding: 0;
+  width: 44px;
+  height: 44px;
   min-height: 44px;
   min-width: 44px;
   border-radius: var(--radius-sm);
   cursor: pointer;
+  flex-shrink: 0;
+}
+.btn-share svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+.btn-share--ok {
+  border-color: var(--green);
+  color: var(--green);
 }

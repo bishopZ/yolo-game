@@ -51,13 +51,15 @@ export const createTicker = ({
     trackEl.style.transform = `translate3d(${cw - scrollPx}px, 0, 0)`;
   };
 
+  const formatTapeLabel = (text) => `${text.toUpperCase()}?`;
+
   const appendWord = (text) => {
     const span = document.createElement('span');
     const key = text.toLowerCase();
     span.className = targetLower.has(key)
       ? 'play-ticker-word play-ticker-word--target'
       : 'play-ticker-word';
-    span.textContent = text;
+    span.textContent = formatTapeLabel(text);
     trackEl.appendChild(span);
     return span;
   };
@@ -146,7 +148,7 @@ export const createTicker = ({
       for (const raw of labels || []) {
         const text = (raw || '').trim();
         const key = text.toLowerCase();
-        if (!text || excludeLower.has(key) || seen.has(key)) continue;
+        if (!text || key === 'person' || excludeLower.has(key) || seen.has(key)) continue;
         seen.add(key);
         map.push(text);
       }

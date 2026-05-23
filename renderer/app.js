@@ -87,19 +87,28 @@ let _currentLabels = [];   // classes for the current target prompt
 let _foundThisRound = false;
 let _hasCompletedGame = false;
 let _cameraError = null;
-let _nearMissShown = false;
 let _pulsePhase = 0;
 let _lastShareFrame = null;
 
 // Canvas 2D context for drawing detection overlay
 let _overlayCtx = null;
 
-const _puzzleClassSet = new Set(
-  PUZZLE_MAP.flatMap(p => (p.classes || []).map(c => c.toLowerCase())),
-);
-
 const _prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const promptTarget = (p) => p?.target ?? p?.prompt ?? '';
+
+const formatPlayHudLabel = (p) => {
+  const target = promptTarget(p);
+  return target ? `${target} - ${p.hint || ''}` : '—';
+};
+
+const restartCountdownAnimation = () => {
+  el.countdownNum.classList.remove('countdown-grow');
+  if (_prefersReducedMotion()) return;
+  void el.countdownNum.offsetWidth;
+  el.countdownNum.classList.add('countdown-grow');
+};
 
 let _foundAudio = null;
 const playFoundSound = () => {
@@ -173,6 +182,7 @@ async function onTips() {
 function onCountdown({ countdown }) {
   showScreen('countdown');
   el.countdownNum.textContent = countdown;
+  restartCountdownAnimation();
 }
 
 function onPrompt({ prompt }) {
@@ -182,11 +192,10 @@ function onPrompt({ prompt }) {
   el.promptDifficulty.textContent = tier;
   el.promptDifficulty.className = `prompt-difficulty prompt-difficulty--${prompt.difficulty || 'easy'}`;
   el.promptDifficulty.hidden = false;
-  el.promptTarget.textContent = prompt.prompt.replace(/^Find\s+a?\s*/i, '');
+  el.promptTarget.textContent = promptTarget(prompt);
   el.promptHint.textContent = prompt.hint || '';
   _currentLabels = prompt.classes || [];
   _foundThisRound = false;
-  _nearMissShown = false;
 }
 
 async function onPlay({ round, totalRounds }) {
@@ -194,10 +203,9 @@ async function onPlay({ round, totalRounds }) {
   el.playRoundLabel.textContent = `Round ${round} of ${totalRounds}`;
 
   const prompt = game.getCurrentPrompt();
-  el.playPromptLabel.textContent = prompt ? prompt.prompt : '—';
+  el.playPromptLabel.textContent = formatPlayHudLabel(prompt);
   _currentLabels = prompt ? (prompt.classes || []) : [];
   _foundThisRound = false;
-  _nearMissShown = false;
   _pulsePhase = 0;
   el.playFoundOverlay.classList.remove('visible');
 
@@ -344,7 +352,6 @@ function startInferenceLoop() {
 
     drawOverlay(result, W, H);
     feedTicker(labels);
-    maybeNearMiss(labels);
 
     if (result.found && _currentLabels.length > 0) {
       const detected = labels.map(l => l.toLowerCase());
@@ -383,26 +390,6 @@ function feedTicker(labels) {
   detectionTicker.setExcludeLabels(_currentLabels);
   detectionTicker.setTargetLabels(_currentLabels);
   detectionTicker.addDetections(labels);
-}
-
-function maybeNearMiss(labels) {
-  if (_nearMissShown || _foundThisRound) return;
-  const targets = _currentLabels.map(l => l.toLowerCase());
-  const hit = labels.some(l => targets.includes(l.toLowerCase()));
-  if (hit) return;
-  const near = labels.find(l => {
-    const key = l.toLowerCase();
-    return _puzzleClassSet.has(key) && !targets.includes(key);
-  });
-  if (!near) return;
-  _nearMissShown = true;
-  el.playPromptLabel.textContent = `Spotted ${near} — not this round's target`;
-  el.playPromptLabel.classList.add('near-miss');
-  setTimeout(() => {
-    el.playPromptLabel.classList.remove('near-miss');
-    const prompt = game.getCurrentPrompt();
-    el.playPromptLabel.textContent = prompt ? prompt.prompt : '—';
-  }, 2200);
 }
 
 function captureShareFrame() {
@@ -596,9 +583,14 @@ const buildShareCardCanvas = () => {
   return c;
 };
 
-const flashShareButton = (btn, okLabel, defaultLabel) => {
-  btn.textContent = okLabel;
-  setTimeout(() => { btn.textContent = defaultLabel; }, 2000);
+const flashShareButton = (btn, okTitle) => {
+  const prev = btn.getAttribute('title') || '';
+  btn.classList.add('btn-share--ok');
+  btn.setAttribute('title', okTitle);
+  setTimeout(() => {
+    btn.classList.remove('btn-share--ok');
+    btn.setAttribute('title', prev);
+  }, 2000);
 };
 
 el.btnShareFacebook.addEventListener('click', () => {
@@ -617,7 +609,7 @@ el.btnShareDownload.addEventListener('click', () => {
   link.download = `yolo-game-score-${game.getTotalScore()}.png`;
   link.href = c.toDataURL('image/png');
   link.click();
-  flashShareButton(el.btnShareDownload, 'Saved!', 'Save image');
+  flashShareButton(el.btnShareDownload, 'Saved!');
 });
 
 el.btnShareCopy.addEventListener('click', async () => {
@@ -632,7 +624,7 @@ el.btnShareCopy.addEventListener('click', async () => {
           'image/png': blob,
         }),
       ]);
-      flashShareButton(el.btnShareCopy, 'Copied!', 'Copy text');
+      flashShareButton(el.btnShareCopy, 'Copied!');
       return;
     }
   } catch {
@@ -640,7 +632,7 @@ el.btnShareCopy.addEventListener('click', async () => {
   }
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(text);
-    flashShareButton(el.btnShareCopy, 'Copied!', 'Copy text');
+    flashShareButton(el.btnShareCopy, 'Copied!');
   }
 });
 

@@ -5,6 +5,18 @@ All notable changes to [Yolo Game](https://github.com/bishopZ/yolo-game) are doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-05-23
+
+### Changed
+
+- **Prompt targets** — each puzzle in `renderer/puzzle_map.json` now has an explicit `target` field; the Prompt screen no longer strips text from `prompt` with a regex (fixes “n animal” for “Find an animal”).
+- **Play HUD** — upper-left label is always `target - hint` (hyphen, not em dash); removed the one-per-round near-miss yellow message.
+- **Prompt hint** — brighter hint text on the Prompt screen.
+- **Countdown** — each 3-2-1 digit scales up over one second, synced to the count (respects `prefers-reduced-motion`).
+- **Detection ticker** — omits `person`; labels display as `WORD?` (e.g. `REMOTE?`).
+- **Share row** — final summary uses compact platform icons in a single row; download/copy feedback via title highlight without replacing icons.
+- **README** — license, Python, MLX, Apple Silicon, Electron, and macOS badges.
+
 ## [1.0.0] - 2026-05-21
 
 First public release — built for the [WebAI YOLO26 MLX Build Challenge](https://community.webai.com/t/the-yolo26-mlx-build-challenge-may-2026/16) (May 2026).
@@ -49,4 +61,5 @@ First public release — built for the [WebAI YOLO26 MLX Build Challenge](https:
 - Apple Silicon Mac (M1–M4), macOS 13+
 - Python 3.10–3.12 and Node.js 18+ for source development; standalone DMG includes embedded runtime
 
+[1.0.1]: https://github.com/bishopZ/yolo-game/releases/tag/v1.0.1
 [1.0.0]: https://github.com/bishopZ/yolo-game/releases/tag/v1.0.0

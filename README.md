@@ -1,5 +1,12 @@
 # Yolo Game
 
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](https://www.python.org)
+[![MLX](https://img.shields.io/badge/MLX-0.30.3%2B-FF6F00.svg)](https://github.com/ml-explore/mlx)
+[![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-M1%2FM2%2FM3%2FM4-000000.svg?logo=apple)](https://support.apple.com/en-us/116943)
+[![Electron](https://img.shields.io/badge/Electron-42%2B-47848F.svg?logo=electron)](https://www.electronjs.org)
+[![macOS](https://img.shields.io/badge/macOS-13%2B-000000.svg?logo=apple)](https://www.apple.com/macos)
+
 **Getting people back into the physical world**, one object at a time.
 
 Most games keep you seated, staring at a screen. Yolo Game does the opposite. It gives you a prompt, starts a 2-minute countdown, and sends you sprinting through your house to hold a real object up to the camera before time runs out. YOLO26 MLX runs entirely on your Apple Silicon Mac, no cloud, no latency, recognizing objects as fast as you can find them.
@@ -20,9 +27,9 @@ Built for the **[WebAI YOLO26 MLX Build Challenge](https://community.webai.com/t
 
 ---
 
-## Download the Mac app (standalone - no terminal)
+## Download the Mac app (standalone - no requirements)
 
-Pre-built **Apple Silicon** releases include the game, **yolo26n** weights, and an embedded Python/MLX runtime. No Homebrew, venv, or manual model download required.
+Pre-built Apple Silicon releases include the game, **yolo26n** weights, and an embedded Python/MLX runtime. No Homebrew, venv, or manual model download required.
 
 **[Latest release (DMG)](https://github.com/bishopZ/yolo-game/releases/download/v1.0.0/Yolo.Game-1.0.0-arm64.dmg)**
 
@@ -156,10 +163,7 @@ You leave the JSON-only path and train or fine-tune a model that emits **new** c
 4. **Map prompts** - Add `puzzle_map.json` entries whose `classes` strings **exactly match** the labels your model returns.
 5. **Play-test** - Run at home; tune `YOLO_CONF` if finds are too strict or loose.
 
-Full training commands, dataset formats, and Infernace UI steps live in upstream docs. Do not duplicate them here:
-
-- [YOLO26 MLX (yolo-mlx)](https://github.com/thewebAI/yolo-mlx)
-- [WebAI community — YOLO26 MLX challenge & Infernace](https://community.webai.com)
+Full training commands, dataset formats, and Infernace UI steps live in [YOLO26 MLX (yolo-mlx).](https://github.com/thewebAI/yolo-mlx)
 
 If you modify `inference/server.py` or bundle custom weights, AGPL-3.0 applies to what you distribute - see [LICENSE](LICENSE).
 
