@@ -20,16 +20,6 @@ Built for the **[WebAI YOLO26 MLX Build Challenge](https://community.webai.com/t
 
 ---
 
-## Requirements
-
-- **Apple Silicon Mac** (M1, M2, M3, or M4) - MLX requires Apple Silicon
-- **macOS 13+**
-- **Python 3.10+**
-- **Node.js 18+**
-- **npm 9+**
-
----
-
 ## Download the Mac app (standalone - no terminal)
 
 Pre-built **Apple Silicon** releases include the game, **yolo26n** weights, and an embedded Python/MLX runtime. No Homebrew, venv, or manual model download required.
@@ -40,25 +30,19 @@ Pre-built **Apple Silicon** releases include the game, **yolo26n** weights, and 
 2. Launch the app; allow **camera** access when macOS prompts.
 3. Wait for “Loading inference model…” to finish (~5-10s first launch), then tap **Play Now**.
 
-**Requirements:** Apple Silicon Mac (M1–M4), macOS 13+.
 
-### Build a standalone DMG yourself
-
-From `repo/` on an Apple Silicon Mac with Python 3.10–3.12:
-
-```bash
-npm install
-npm run dist    # runs prepare:bundle, then electron-builder (signed if APPLE_* env set)
-npm run pack    # unsigned .app in dist/mac-arm64/ for smoke tests
-```
-
-`scripts/prepare_bundle.sh` creates `bundle/python` (embedded venv) and `bundle/models/yolo26n.npz` before packaging. See **[docs/macos-code-signing.md](docs/macos-code-signing.md)** for signing and notarization.
 
 ---
 
 ## Setup (from source - developers)
 
-Use this path if you are hacking on the game or running `npm start` without a release DMG. The **signed DMG** does not need these steps.
+### Requirements
+
+- **Apple Silicon Mac** (M1, M2, M3, or M4) - MLX requires Apple Silicon
+- **macOS 13+**
+- **Python 3.10+**
+- **Node.js 18+**
+- **npm 9+**
 
 ### 1. Clone the repo
 
@@ -152,32 +136,17 @@ Inference runs at ~5fps. Camera preview runs at native frame rate. Only the dete
 
 ## Extending with custom puzzles
 
-### Path A - COCO classes only (stay in this repo)
-
-Edit `[renderer/puzzle_map.json](renderer/puzzle_map.json)`. Each entry:
-
-
-| Field        | Purpose                                                                                       |
-| ------------ | --------------------------------------------------------------------------------------------- |
-| `prompt`     | Shown to the player (e.g. `"Find a cup or mug"`)                                              |
-| `classes`    | One or more [COCO-80](https://github.com/thewebAI/yolo-mlx) class names the detector must see |
-| `hint`       | Optional tip on the prompt screen                                                             |
-| `difficulty` | `"easy"` or `"hard"` — sessions use 3 easy prompts then 2 hard                                |
-
-
-Reload the game (`npm start` or restart the app). No rebuild required.
-
-### Path B - Custom classes beyond COCO-80
+### Custom classes beyond COCO-80
 
 You leave the JSON-only path and train or fine-tune a model that emits **new** class labels, then point the Python subprocess at those weights.
 
 **Prerequisites**
 
 - Apple Silicon Mac, macOS 13+
-- Python 3.10+ venv with `yolo26mlx` (same as Setup §3)
+- Python 3.10+ venv with `yolo26mlx`
 - Local clone of [yolo-mlx](https://github.com/thewebAI/yolo-mlx) and weights tooling
 - Labeled images for your new classes (or a workflow that produces them)
-- Comfort with WebAI’s **Infernace** / fine-tune flow (not shipped inside this game)
+- Comfort with WebAI’s **Infernace** / fine-tune flow
 
 **Process (headline steps)**
 
@@ -226,8 +195,8 @@ yolo-game/
 
 ## Why the Austin-flavored category?
 
-This city's motto used to be "Austin, the friendly city." It *is* a friendly town. People talk to each other in the grocery store, on the street, in the park. Austinites are very present in the physical world. When thinking about the challenge and the Austin category, I didn't want to just slap a bat logo on the title screen. I wanted to build a product that is shaped by the place, the culture, and daily life. I didn't want it be superficially Austin-themed. Such as, a traffic monitor that just happens to be in Austin. I also didn't want it to be stereotypical: bats, tacos, keeping it weird. I wanted something that would capture the lifeblood of the city: curious, friendly, fun, supportive, and experimental. I wanted something that used the newest technology, yet gets us to re-engage with our physical environment.  
-  
+This city's motto used to be "Austin, the friendly city." It *is* a friendly town. People talk to each other in the grocery store, on the street, in the park. Austinites are very present in the physical world. When thinking about the challenge and the Austin category, I didn't want to just slap a bat logo on the title screen. I wanted to build a product that is shaped by the place, the culture, and daily life. I didn't want it be superficially Austin-themed. Such as, a traffic monitor that just happens to be in Austin. I also didn't want it to be stereotypical: bats, tacos, keeping it weird. I wanted something that would capture the lifeblood of the city: curious, friendly, fun, supportive, and experimental. I wanted something that used the newest technology, yet gets us to re-engage with our physical environment.
+
 Yolo Game fits that frame in a few concrete ways.
 
 - **Get out of your chair:** It assumes a real home, not a staged lab bench. You move room to room. The camera is the referee.
